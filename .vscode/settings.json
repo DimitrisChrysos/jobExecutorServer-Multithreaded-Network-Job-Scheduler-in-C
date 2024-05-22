@@ -7,6 +7,7 @@
         "stdlib.h": "c",
         "string.h": "c",
         "queue.h": "c",
-        "socket.h": "c"
+        "socket.h": "c",
+        "semaphore.h": "c"
     }
 }
