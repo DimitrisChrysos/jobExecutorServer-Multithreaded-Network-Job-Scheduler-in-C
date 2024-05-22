@@ -43,13 +43,13 @@ int queue_empty(Queue myqueue);
 int queue_size(Queue myqueue);
 
 
-typedef struct triplet Triplet;
-typedef struct triplet {
-    char* jobID;
-    char* job;
-    int queuePosition;
-    int pid;
-} Triplet;
+// typedef struct triplet Triplet;
+// typedef struct triplet {
+//     char* jobID;
+//     char* job;
+//     int queuePosition;
+//     int pid;
+// } Triplet;
 
 // // initalizes a Triplet
 // Triplet* init_triplet(char* jobID, char* job, int queuePosition, int pid);

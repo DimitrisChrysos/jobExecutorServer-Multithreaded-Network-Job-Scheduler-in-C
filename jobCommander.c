@@ -12,8 +12,6 @@
 
 #define PACKET_CAPACITY 100 // the max capacity of each packet
 
-void useless_sig_handler() {}
-
 int jobCommander(int argc, char *argv[]) {
 
     // check if the server is active

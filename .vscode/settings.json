@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "types.h": "c",
+        "errno.h": "c",
+        "fcntl.h": "c",
+        "stdlib.h": "c",
+        "string.h": "c",
+        "queue.h": "c",
+        "socket.h": "c"
+    }
+}
