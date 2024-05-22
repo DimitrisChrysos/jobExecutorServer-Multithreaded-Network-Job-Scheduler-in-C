@@ -18,6 +18,7 @@ ServerInfo *info;
 
 void jobExecutorServer(int argc, char *argv[]) {
 
+
     // name the arguments
     int port = atoi(argv[1]);   // the port of the Server
 
@@ -27,12 +28,16 @@ void jobExecutorServer(int argc, char *argv[]) {
 
     // set the socket
     struct sockaddr_in addr;
+    int options = 1;
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &options, sizeof(options));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
 
     // bind the socket
-    bind(server_socket, (struct sockaddr *) &addr, sizeof(addr));
+    if (bind(server_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        printf("binding the socket failed...\n");
+    }
 
     // Prepare to accept connections
     listen(server_socket, 5);
@@ -43,10 +48,13 @@ void jobExecutorServer(int argc, char *argv[]) {
         
         // accept a new connection from the Commander
         int commander_socket = accept(server_socket, NULL, NULL);
+        printf("I ARRIVED HERE!\n");
 
         // read the message from the Commander and print it
         char commander_message[1024] = { 0 };
+        printf("1. server!\n");
         read(commander_socket, commander_message, sizeof(commander_message));
+        printf("2. server!\n");
         printf("SERVER: %s\n", commander_message);
 
         // send a message back to the Commander

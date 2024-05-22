@@ -15,11 +15,39 @@
 
 #define SERVER_HOSTNAME "localhost"     // TODO: delete this from the dit machines
 
+// creates a big string, to sent the job to the Server < Needs free()! >
+char* create_job(int argc, char *argv[]) {
+
+    int start_index = 3;
+    int end_index = argc - 1;
+    
+    if (start_index == end_index) {
+        char* return_string = (char*)malloc(sizeof(char)*(strlen(argv[start_index]) + 1));
+        strcpy(return_string, argv[start_index]);
+        return return_string;
+    }
+
+    int total_len = 0;
+    for (int i = start_index ; i <= end_index ; i++) {
+        total_len += strlen(argv[i]);   // for each argument
+        total_len += 1; // for the space chars and the '\0' at the end
+    }
+
+    char* return_string = (char*)malloc(sizeof(char)*total_len);
+    strcpy(return_string, argv[start_index]);
+    for (int i = start_index + 1 ; i <= end_index ; i++) {
+        strcat(return_string, " ");
+        strcat(return_string, argv[i]);
+    }
+
+    return return_string;
+}
+
 int jobCommander(int argc, char *argv[]) {
     
     // name the arguments
     char* port = argv[2];   // the port of the Server
-    char* job = argv[3];    // the job to be sent, to the Server
+    char* job = create_job(argc, argv);    // the job to be sent, to the Server
 
     // TODO: Uncomment the following line when using the linux systems of DIT!
     // char* server_name = argv[1];    // the name of the machine
@@ -73,7 +101,10 @@ int jobCommander(int argc, char *argv[]) {
     freeaddrinfo(result);
 
     // send the job to the server
-    send(commander_fd, job, strlen(job), 0);
+    send(commander_fd, job, strlen(job) + 1, 0);
+    
+    // free the job
+    free(job);
 
     // read a message from the server and print it
     char server_message[256];
