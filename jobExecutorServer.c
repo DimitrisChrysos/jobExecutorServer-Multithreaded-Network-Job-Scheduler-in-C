@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+// #include <netdb.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -46,10 +47,10 @@ void jobExecutorServer(int argc, char *argv[]) {
         // read the message from the Commander and print it
         char commander_message[1024] = { 0 };
         read(commander_socket, commander_message, sizeof(commander_message));
-        printf("The commander sent the data: %s\n", commander_message);
+        printf("SERVER: %s\n", commander_message);
 
         // send a message back to the Commander
-        char server_message[256] = "Successfully connected to the server!";
+        char server_message[256] = "The server received the message from the commander!";
         send(commander_socket, server_message, sizeof(server_message), 0);
 
         // close the Commander socket

@@ -8,6 +8,10 @@
         "string.h": "c",
         "queue.h": "c",
         "socket.h": "c",
-        "semaphore.h": "c"
+        "semaphore.h": "c",
+        "wait.h": "c",
+        "netdb.h": "c",
+        "compare": "c",
+        "type_traits": "c"
     }
 }

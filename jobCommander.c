@@ -6,31 +6,71 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include "queue.h"
 #include <semaphore.h>
 
-#define PACKET_CAPACITY 100 // the max capacity of each packet
+#define SERVER_HOSTNAME "localhost"     // TODO: delete this from the dit machines
 
 int jobCommander(int argc, char *argv[]) {
     
     // name the arguments
-    int port = atoi(argv[2]);   // the port of the Server
+    char* port = argv[2];   // the port of the Server
     char* job = argv[3];    // the job to be sent, to the Server
 
-    // create a socket for this commander
-    int commander_fd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    // set the socket
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = INADDR_ANY;
+    // TODO: Uncomment the following line when using the linux systems of DIT!
+    // char* server_name = argv[1];    // the name of the machine
 
-    // connect to the socket
-    connect(commander_fd, (struct sockaddr *) &addr, sizeof(addr));
+    // TODO: Comment/Delete this line when not using the ip of this machine
+    char* server_name = SERVER_HOSTNAME;
+
+    // set the hint address
+    struct addrinfo hint;
+    memset(&hint, 0, sizeof(hint));
+    hint.ai_socktype = SOCK_STREAM;
+    hint.ai_family = AF_UNSPEC;
+
+    // get the results from the hint address
+    struct addrinfo *result;
+    getaddrinfo(server_name, port, &hint, &result);
+
+    // Find the actuall address and connect with the server:
+    // this is done by tring to create a socket and connect to the server
+    // if any of those two fails, it means it's not the proper address
+    // so we check the next address from the results that getaddrinfo() gave us
+    int commander_fd;
+    struct addrinfo *temp_addr_info = result;
+    while (temp_addr_info != NULL) {
+
+        // the info of the temp address
+        int family = temp_addr_info->ai_family;
+        int type = temp_addr_info->ai_socktype;
+        int protocol = temp_addr_info->ai_protocol;
+        struct sockaddr *address = temp_addr_info->ai_addr;
+        socklen_t size = temp_addr_info->ai_addrlen;
+
+        // try creating a socket for this commander
+        if ((commander_fd = socket(family, type, protocol)) == -1) {
+            temp_addr_info = temp_addr_info->ai_next;
+            continue;
+        }
+
+        // try connecting to the server with the socket
+        if (connect(commander_fd, address, size) == -1) {
+            close(commander_fd);
+            temp_addr_info = temp_addr_info->ai_next;
+            continue;
+        }
+
+        // if we arrive here, it means he have found the address
+        break;
+    }
+
+    // free all the results
+    freeaddrinfo(result);
 
     // send the job to the server
     send(commander_fd, job, strlen(job), 0);
@@ -38,7 +78,7 @@ int jobCommander(int argc, char *argv[]) {
     // read a message from the server and print it
     char server_message[256];
     read(commander_fd, &server_message, sizeof(server_message));
-    printf("The server sent the data: %s\n", server_message);
+    printf("COMMANDER: %s\n", server_message);
 
     // close the commander socket
     close(commander_fd);
