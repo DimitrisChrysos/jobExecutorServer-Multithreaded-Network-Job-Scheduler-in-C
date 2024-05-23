@@ -12,6 +12,7 @@
         "wait.h": "c",
         "netdb.h": "c",
         "compare": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "servercommands.h": "c"
     }
 }

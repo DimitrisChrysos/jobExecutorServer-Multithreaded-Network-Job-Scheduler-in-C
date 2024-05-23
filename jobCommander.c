@@ -100,7 +100,7 @@ int jobCommander(int argc, char *argv[]) {
     // free all the results
     freeaddrinfo(result);
 
-    // send 1 if exit else 0
+    // send 1 if exit, else send 0
     int exit = 0;
     if (strcmp(argv[3], "exit") == 0) {
         exit = 1;
@@ -129,6 +129,20 @@ int jobCommander(int argc, char *argv[]) {
     char server_message[len];
     read(commander_fd, &server_message, sizeof(server_message));
     printf("COMMANDER: %s\n", server_message);
+
+
+    // check if commander makes an issueJob command, if yes print the message returned when
+    // the job is finished
+    if (strcmp(argv[3], "issueJob") == 0) {
+
+        // make the Commander wait for the server to finish executing the command
+        char finished[50];
+        // TODO: make the server able to execute the commands and after the execution
+        // send "finished" to the Commander to indicate that it finished
+        read(commander_fd, &finished, sizeof(char)*50);
+
+        printf("COMMANDER: %s\n", finished);
+    }
 
     // close the commander socket
     close(commander_fd);

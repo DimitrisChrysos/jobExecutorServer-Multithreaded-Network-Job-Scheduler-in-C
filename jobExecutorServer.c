@@ -82,7 +82,6 @@ void* handle_commander(void* myArgs) {
     free(full_job);
     free(returned_message);
     free(insideArgs);
-    // free(com_socket);
 
     // free the memory of "tokenized"
     for (int i = 0; i < total_words; i++) {
@@ -91,8 +90,8 @@ void* handle_commander(void* myArgs) {
         }
     }
 
-    // close the Commander socket
-    close(commander_socket);
+    // // close the Commander socket
+    // close(commander_socket);
 }
 
 void jobExecutorServer(int argc, char *argv[]) {
@@ -129,8 +128,6 @@ void jobExecutorServer(int argc, char *argv[]) {
     while (info->open) {
 
         // accept a new connection from the Commander
-        // int* commander_socket = (int*)malloc(sizeof(int));
-        // *commander_socket = accept(server_socket, NULL, NULL);
         int commander_socket = accept(server_socket, NULL, NULL);
         
         // read if exit
@@ -138,7 +135,6 @@ void jobExecutorServer(int argc, char *argv[]) {
         read(commander_socket, &exit, sizeof(int));
 
         // handle the Commander-Server communication
-        // TODO: fix the need of inserting "exit" 2 times, to actually exit the server
         pthread_t temp_thread;
         ThreadArgs* myArgs = (ThreadArgs*)malloc(sizeof(ThreadArgs));
         myArgs->commander_socket = commander_socket;
@@ -154,7 +150,7 @@ void jobExecutorServer(int argc, char *argv[]) {
         controller_count++;
 
         // if exit, wait for all the threads to join
-        // when the last thread joins info->open is going to close, and we will exit the loop
+        // when the last thread joins, info->open is going to close and we will exit the loop
         if (exit) {
             for (int i = 0 ; i < controller_count ; i++) {
                 pthread_join(thread_arr[i], NULL);
@@ -162,7 +158,7 @@ void jobExecutorServer(int argc, char *argv[]) {
         }
     }
 
-
+    // free the memory allocated for the thread array
     free(thread_arr);
 }
 
