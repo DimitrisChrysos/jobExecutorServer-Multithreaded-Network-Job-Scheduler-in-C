@@ -23,17 +23,21 @@ void handle_commander(int server_socket) {
     // read the number of words of the job
     int total_words;
     read(commander_socket, &total_words, sizeof(int));
-    printf("SERVER: total_words = %d\n", total_words);
+    // printf("SERVER: total_words = %d\n", total_words);
 
     // read the total_len of the job
     int total_len;
     read(commander_socket, &total_len, sizeof(int));
-    printf("SERVER: total_len = %d\n", total_len);
+    // printf("SERVER: total_len = %d\n", total_len);
 
     // read the job from the Commander and print it
     char *commander_message = (char*)calloc(total_len, sizeof(char));
     read(commander_socket, commander_message, total_len*sizeof(char));
     printf("SERVER: %s\n\n", commander_message);
+
+    // save the commander_message as full_job
+    char* full_job = (char*)calloc(total_len, sizeof(char));
+    strcpy(full_job, commander_message);
 
     // tokenize the string
     char** tokenized = (char **)malloc(total_words * sizeof(char*));   
@@ -56,12 +60,20 @@ void handle_commander(int server_socket) {
     //     printf("tok[%d] = %s\n", i, tokenized[i]);
     // }
 
-    // send a message back to the Commander
-    char server_message[256] = "The server received the message from the commander!";
-    send(commander_socket, server_message, sizeof(server_message), 0);
+    // call the commands function to execute the command
+    char* returned_message = commands(tokenized, full_job);
 
-    // free the commander_message
+    // send the length of the message to be sent afterwards
+    int len = strlen(returned_message) + 1;
+    send(commander_socket, &len, sizeof(int), 0);
+
+    // send a message back to the Commander
+    send(commander_socket, returned_message, sizeof(char)*(strlen(returned_message) + 1), 0);
+
+    // free the commander_message, full_job and the returned_message
     free(commander_message);
+    free(full_job);
+    free(returned_message);
 
     // free the memory of "tokenized"
     for (int i = 0; i < total_words; i++) {
@@ -104,7 +116,11 @@ void jobExecutorServer(int argc, char *argv[]) {
     while (info->open) {
         
         // handle the Commander-Server communication
+        printf("*********************************\n");
+        // print_queue_and_stats(info->myqueue);
         handle_commander(server_socket);
+        print_queue_and_stats(info->myqueue);
+        printf("---------------------------------\n\n\n\n");
     }
 }
 
@@ -119,6 +135,17 @@ int main(int argc, char *argv[]) {
 
     // call the jobExecutorServer function
     jobExecutorServer(argc, argv);
+
+    // delete every doublet of the queue
+    if (info->myqueue->size > 0) {  // free the memory from the waiting queue
+        int qSize = info->myqueue->size;
+        Node* temp_node = info->myqueue->first_node;
+        for (int i = 0 ; i < qSize ; i++) {
+            Doublet* tempDoublet = temp_node->value;
+            delete_doublet(tempDoublet);
+            temp_node = temp_node->child;
+        }
+    }
 
     // delete the Queue
     deleteQueue(info->myqueue);

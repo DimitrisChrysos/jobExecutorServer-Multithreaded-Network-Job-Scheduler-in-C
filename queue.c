@@ -93,53 +93,57 @@ int queue_size(Queue myqueue) {
     return myqueue.size;
 }
 
-// // for Triplets
+// for Doublets
 
-// Triplet* init_triplet(char* jobID, char* job, int queuePosition, int pid) {
-//     Triplet* mytriplet = (Triplet*)malloc(sizeof(Triplet));
-//     mytriplet->jobID = (char*)malloc(strlen(jobID) + 1);
-//     strcpy(mytriplet->jobID, jobID);
-//     mytriplet->job = (char*)malloc(strlen(job) + 1);
-//     strcpy(mytriplet->job, job);
-//     mytriplet->queuePosition = queuePosition;
-//     mytriplet->pid = pid;
-//     return mytriplet;
-// }
+Doublet* init_doublet(char* jobID, char* job) {
+    Doublet* mydoublet = (Doublet*)malloc(sizeof(Doublet));
+    mydoublet->jobID = (char*)malloc(strlen(jobID) + 1);
+    strcpy(mydoublet->jobID, jobID);
+    mydoublet->job = (char*)malloc(strlen(job) + 1);
+    strcpy(mydoublet->job, job);
+    return mydoublet;
+}
 
-// void delete_triplet(Triplet* mytriplet) {
-//     free(mytriplet->jobID);
-//     free(mytriplet->job);
-//     free(mytriplet);
-// }
+void delete_doublet(Doublet* mydoublet) {
+    free(mydoublet->jobID);
+    free(mydoublet->job);
+    free(mydoublet);
+}
 
-// char* format_triplet(Triplet* mytriplet) {
+char* format_doublet_basic(Doublet* mydoublet) {
 
-//     int safe_amount_of_chars = (strlen(mytriplet->job) + strlen(mytriplet->jobID) + 10)*2;
-//     char* buffer = (char*)malloc(sizeof(char)*(safe_amount_of_chars));
-//     sprintf(buffer, "<%s,%s,%d>", mytriplet->jobID, mytriplet->job, mytriplet->queuePosition);
-//     return buffer;
-// }
+    int safe_amount_of_chars = (strlen(mydoublet->job) + strlen(mydoublet->jobID) + 7)*2;
+    char* buffer = (char*)malloc(sizeof(char)*(safe_amount_of_chars));
+    sprintf(buffer, "<%s,%s>", mydoublet->jobID, mydoublet->job);
+    return buffer;
+}
 
-// void print_queue_and_stats(Queue* myqueue) {
-//     printf("\n");
-//     if (queue_empty(*myqueue)) {
-//         printf("The queue is empty!\n");
-//         return;
-//     }
-//     Triplet* first_node = myqueue->first_node->value;
-//     Triplet* last_node = myqueue->last_node->value;
-//     printf("myqueue: first item job = %s \n", first_node->job);
-//     printf("myqueue: last item job = %s \n", last_node->job);
-//     printf("myqueue: size = %d\n", myqueue->size);
+char* format_doublet(Doublet* mydoublet) {
 
-//     printf("\n");
-//     Node* temp_node = myqueue->first_node;
-//     for (int i = 0 ; i < myqueue->size ; i++) {
-//         Triplet* temp_triplet = temp_node->value;
-//         printf("myqueue[%d] jobID = %s\n", i, temp_triplet->jobID);
-//         printf("myqueue[%d] job = %s\n", i, temp_triplet->job);
-//         printf("myqueue[%d] queuePosition = %d\n", i, temp_triplet->queuePosition);
-//         temp_node = temp_node->child;
-//     }
-//     printf("\n");
-// }
+    int safe_amount_of_chars = (strlen(mydoublet->job) + strlen(mydoublet->jobID) + 20)*2;
+    char* buffer = (char*)malloc(sizeof(char)*(safe_amount_of_chars));
+    sprintf(buffer, "JOB <%s,%s> SUBMITTED", mydoublet->jobID, mydoublet->job);
+    return buffer;
+}
+
+void print_queue_and_stats(Queue* myqueue) {
+    printf("\n");
+    if (queue_empty(*myqueue)) {
+        printf("The queue is empty!\n");
+        return;
+    }
+    Doublet* first_node = myqueue->first_node->value;
+    Doublet* last_node = myqueue->last_node->value;
+    // printf("myqueue: first item job = %s \n", first_node->job);
+    // printf("myqueue: last item job = %s \n", last_node->job);
+    printf("myqueue: size = %d\n", myqueue->size);
+
+    Node* temp_node = myqueue->first_node;
+    for (int i = 0 ; i < myqueue->size ; i++) {
+        Doublet* temp_doublet = temp_node->value;
+        printf("myqueue[%d] jobID = %s\n", i, temp_doublet->jobID);
+        printf("myqueue[%d] job = %s\n", i, temp_doublet->job);
+        temp_node = temp_node->child;
+    }
+    printf("\n");
+}

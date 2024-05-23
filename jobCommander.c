@@ -114,8 +114,12 @@ int jobCommander(int argc, char *argv[]) {
     // free the job
     free(job);
 
-    // read a message from the server and print it
-    char server_message[256];
+    // read the length of the message to be read afterwards
+    int len;
+    read(commander_fd, &len, sizeof(int));
+
+    // read the message from the server and print it
+    char server_message[len];
     read(commander_fd, &server_message, sizeof(server_message));
     printf("COMMANDER: %s\n", server_message);
 
