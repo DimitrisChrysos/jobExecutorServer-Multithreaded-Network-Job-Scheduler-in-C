@@ -93,12 +93,20 @@ int jobCommander(int argc, char *argv[]) {
             continue;
         }
 
-        // if we arrive here, it means he have found the address
+        // if we arrive here, it means we have found the wanted address
         break;
     }
 
     // free all the results
     freeaddrinfo(result);
+
+    // send the number of words of the job to the server
+    int total_words = argc - 3;
+    send(commander_fd, &total_words, sizeof(int), 0);
+
+    // send the job length to the server
+    int total_len = strlen(job) + 1;
+    send(commander_fd, &total_len, sizeof(int), 0);
 
     // send the job to the server
     send(commander_fd, job, strlen(job) + 1, 0);

@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-// #include <netdb.h>
+#include <netdb.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -16,8 +16,65 @@
 
 ServerInfo *info;
 
-void jobExecutorServer(int argc, char *argv[]) {
+void handle_commander(int server_socket) {
+    // accept a new connection from the Commander
+    int commander_socket = accept(server_socket, NULL, NULL);
 
+    // read the number of words of the job
+    int total_words;
+    read(commander_socket, &total_words, sizeof(int));
+    printf("SERVER: total_words = %d\n", total_words);
+
+    // read the total_len of the job
+    int total_len;
+    read(commander_socket, &total_len, sizeof(int));
+    printf("SERVER: total_len = %d\n", total_len);
+
+    // read the job from the Commander and print it
+    char *commander_message = (char*)calloc(total_len, sizeof(char));
+    read(commander_socket, commander_message, total_len*sizeof(char));
+    printf("SERVER: %s\n\n", commander_message);
+
+    // tokenize the string
+    char** tokenized = (char **)malloc(total_words * sizeof(char*));   
+    for (int i = 0 ; i < total_words ; i++) {
+        tokenized[i] = malloc(total_len * sizeof(char));
+    } 
+    char* tok = strtok(commander_message, " ");
+    int count = 0;
+    while (tok != NULL) {
+        if (count == total_words) {
+            break;
+        }
+        strcpy(tokenized[count], tok);
+        tok = strtok(NULL, " ");
+        count++;
+    }
+
+    // // print the tokens
+    // for (int i = 0 ; i < total_words ; i++) {
+    //     printf("tok[%d] = %s\n", i, tokenized[i]);
+    // }
+
+    // send a message back to the Commander
+    char server_message[256] = "The server received the message from the commander!";
+    send(commander_socket, server_message, sizeof(server_message), 0);
+
+    // free the commander_message
+    free(commander_message);
+
+    // free the memory of "tokenized"
+    for (int i = 0; i < total_words; i++) {
+        if (tokenized[i] != NULL) {
+            free(tokenized[i]);
+        }
+    }
+
+    // close the Commander socket
+    close(commander_socket);
+}
+
+void jobExecutorServer(int argc, char *argv[]) {
 
     // name the arguments
     int port = atoi(argv[1]);   // the port of the Server
@@ -46,23 +103,8 @@ void jobExecutorServer(int argc, char *argv[]) {
     // keep the server open
     while (info->open) {
         
-        // accept a new connection from the Commander
-        int commander_socket = accept(server_socket, NULL, NULL);
-        printf("I ARRIVED HERE!\n");
-
-        // read the message from the Commander and print it
-        char commander_message[1024] = { 0 };
-        printf("1. server!\n");
-        read(commander_socket, commander_message, sizeof(commander_message));
-        printf("2. server!\n");
-        printf("SERVER: %s\n", commander_message);
-
-        // send a message back to the Commander
-        char server_message[256] = "The server received the message from the commander!";
-        send(commander_socket, server_message, sizeof(server_message), 0);
-
-        // close the Commander socket
-        close(commander_socket);
+        // handle the Commander-Server communication
+        handle_commander(server_socket);
     }
 }
 
