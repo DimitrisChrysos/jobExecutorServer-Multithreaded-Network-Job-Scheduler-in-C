@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <pthread.h>
 #include "ServerCommands.h"
 #include <semaphore.h>
 
@@ -116,11 +117,11 @@ void jobExecutorServer(int argc, char *argv[]) {
     while (info->open) {
         
         // handle the Commander-Server communication
-        printf("*********************************\n");
+        // printf("*********************************\n");
         // print_queue_and_stats(info->myqueue);
         handle_commander(server_socket);
-        print_queue_and_stats(info->myqueue);
-        printf("---------------------------------\n\n\n\n");
+        // print_queue_and_stats(info->myqueue);
+        // printf("---------------------------------\n\n\n\n");
     }
 }
 
@@ -130,7 +131,7 @@ int main(int argc, char *argv[]) {
     Queue* myqueue = createQueue();
 
     // Init the ServerInfo struct and set the global pointer
-    ServerInfo myServerInfo = {myqueue, 1, 1};
+    ServerInfo myServerInfo = {myqueue, 1, 1, atoi(argv[2]), atoi(argv[3])};
     info = &myServerInfo;
 
     // call the jobExecutorServer function

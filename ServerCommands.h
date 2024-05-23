@@ -7,6 +7,8 @@ typedef struct server_info {
     Queue* myqueue;
     int concurrency;
     int open;
+    int bufferSize;
+    int threadPoolSize;
 } ServerInfo;
 
 extern ServerInfo *info;
