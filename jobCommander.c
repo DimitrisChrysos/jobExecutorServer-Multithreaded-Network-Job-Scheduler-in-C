@@ -100,6 +100,13 @@ int jobCommander(int argc, char *argv[]) {
     // free all the results
     freeaddrinfo(result);
 
+    // send 1 if exit else 0
+    int exit = 0;
+    if (strcmp(argv[3], "exit") == 0) {
+        exit = 1;
+    }
+    send(commander_fd, &exit, sizeof(int), 0);
+
     // send the number of words of the job to the server
     int total_words = argc - 3;
     send(commander_fd, &total_words, sizeof(int), 0);

@@ -17,9 +17,15 @@
 
 ServerInfo *info;
 
-void handle_commander(int server_socket) {
-    // accept a new connection from the Commander
-    int commander_socket = accept(server_socket, NULL, NULL);
+typedef struct thread_args ThreadArgs;
+typedef struct thread_args {
+    int commander_socket;
+} ThreadArgs;
+
+void* handle_commander(void* myArgs) {
+    // int commander_socket = *((int *)com_socket);
+    ThreadArgs* insideArgs = (ThreadArgs*)myArgs;
+    int commander_socket = insideArgs->commander_socket;
 
     // read the number of words of the job
     int total_words;
@@ -62,7 +68,7 @@ void handle_commander(int server_socket) {
     // }
 
     // call the commands function to execute the command
-    char* returned_message = commands(tokenized, full_job);
+    char* returned_message = commands(tokenized, full_job, commander_socket);
 
     // send the length of the message to be sent afterwards
     int len = strlen(returned_message) + 1;
@@ -71,10 +77,12 @@ void handle_commander(int server_socket) {
     // send a message back to the Commander
     send(commander_socket, returned_message, sizeof(char)*(strlen(returned_message) + 1), 0);
 
-    // free the commander_message, full_job and the returned_message
+    // free the commander_message, full_job, the returned_message and the com_socket
     free(commander_message);
     free(full_job);
     free(returned_message);
+    free(insideArgs);
+    // free(com_socket);
 
     // free the memory of "tokenized"
     for (int i = 0; i < total_words; i++) {
@@ -112,17 +120,50 @@ void jobExecutorServer(int argc, char *argv[]) {
     // Prepare to accept connections
     listen(server_socket, 5);
 
+    // save the Controller threads to join them after while 
+    int controller_count = 0;
+    int arr_size = 10;
+    pthread_t* thread_arr = (pthread_t*)malloc(arr_size*sizeof(pthread_t));
 
     // keep the server open
     while (info->open) {
+
+        // accept a new connection from the Commander
+        // int* commander_socket = (int*)malloc(sizeof(int));
+        // *commander_socket = accept(server_socket, NULL, NULL);
+        int commander_socket = accept(server_socket, NULL, NULL);
         
+        // read if exit
+        int exit;
+        read(commander_socket, &exit, sizeof(int));
+
         // handle the Commander-Server communication
-        // printf("*********************************\n");
-        // print_queue_and_stats(info->myqueue);
-        handle_commander(server_socket);
-        // print_queue_and_stats(info->myqueue);
-        // printf("---------------------------------\n\n\n\n");
+        // TODO: fix the need of inserting "exit" 2 times, to actually exit the server
+        pthread_t temp_thread;
+        ThreadArgs* myArgs = (ThreadArgs*)malloc(sizeof(ThreadArgs));
+        myArgs->commander_socket = commander_socket;
+        pthread_create(&temp_thread, NULL, &handle_commander, (void*)myArgs);
+
+        // save the thread to join it later
+        // if thread array is filled, double it's size
+        if (controller_count == arr_size) {
+            arr_size += arr_size;
+            thread_arr = (pthread_t*)realloc(thread_arr, arr_size*sizeof(pthread_t));
+        }
+        thread_arr[controller_count] = temp_thread;
+        controller_count++;
+
+        // if exit, wait for all the threads to join
+        // when the last thread joins info->open is going to close, and we will exit the loop
+        if (exit) {
+            for (int i = 0 ; i < controller_count ; i++) {
+                pthread_join(thread_arr[i], NULL);
+            }
+        }
     }
+
+
+    free(thread_arr);
 }
 
 int main(int argc, char *argv[]) {
@@ -137,13 +178,13 @@ int main(int argc, char *argv[]) {
     // call the jobExecutorServer function
     jobExecutorServer(argc, argv);
 
-    // delete every doublet of the queue
+    // delete every triplet of the queue
     if (info->myqueue->size > 0) {  // free the memory from the waiting queue
         int qSize = info->myqueue->size;
         Node* temp_node = info->myqueue->first_node;
         for (int i = 0 ; i < qSize ; i++) {
-            Doublet* tempDoublet = temp_node->value;
-            delete_doublet(tempDoublet);
+            Triplet* tempTriplet = temp_node->value;
+            delete_triplet(tempTriplet);
             temp_node = temp_node->child;
         }
     }

@@ -11,13 +11,13 @@
 #include "ServerCommands.h"
 #include <semaphore.h>
 
-Doublet* issueJob(char* job);
+Triplet* issueJob(char* job, int commander_socket);
 
-char* commands(char** tokenized, char* unix_command) {
+char* commands(char** tokenized, char* unix_command, int commander_socket) {
     if (strcmp(tokenized[0], "issueJob" ) == 0) {
         
-        Doublet* returned_message = issueJob(unix_command);
-        char* message = format_doublet(returned_message);
+        Triplet* returned_message = issueJob(unix_command, commander_socket);
+        char* message = format_triplet(returned_message);
         return message;
     }
     else if (strcmp(tokenized[0], "setConcurrency" ) == 0) {
@@ -131,21 +131,25 @@ char* commands(char** tokenized, char* unix_command) {
 //     }
 // }
 
-Doublet* issueJob(char* job) {
+Triplet* issueJob(char* job, int commander_socket) {
 
-    // format the doublet variables
+    // format the triplet variables
     static int counter = 0;
     counter++;
     char jobID[100];
     sprintf(jobID, "job_%d", counter);
 
     // create a job Triplet for the queue
-    Doublet* mydoublet = init_doublet(jobID, job);
-    enqueue(info->myqueue, mydoublet);
+    Triplet* mytriplet = init_triplet(jobID, job, commander_socket);
+
+    // add the job to the queue only if the buffer is not full
+    if (info->myqueue->size < info->bufferSize) {
+        enqueue(info->myqueue, mytriplet);
+    }
 
     // TODO: need to make it check, if it can run and then run
 
-    return mydoublet;
+    return mytriplet;
 }
 
 char* stop_job(char** tokenized) {
@@ -157,11 +161,11 @@ char* stop_job(char** tokenized) {
     // Check if the process with jobID is waiting
     int waiting = 0;
     int qSize = info->myqueue->size;
-    Doublet* tempDoublet;
+    Triplet* tempTriplet;
     Node* temp_node = info->myqueue->first_node;
     for (int i = 0 ; i < qSize ; i++) {
-        tempDoublet = temp_node->value;
-        if (strcmp(tempDoublet->jobID, jobID) == 0) {
+        tempTriplet = temp_node->value;
+        if (strcmp(tempTriplet->jobID, jobID) == 0) {
             waiting = 1;
             break;
         }
@@ -180,18 +184,18 @@ char* stop_job(char** tokenized) {
             }
             temp_node->parent->child = temp_node->child;
             info->myqueue->size--;
-            delete_doublet(tempDoublet);
+            delete_triplet(tempTriplet);
             free(temp_node);
         }
         else if (temp_node->child == NULL) {
-            tempDoublet = dequeue(info->myqueue);
-            delete_doublet(tempDoublet);
+            tempTriplet = dequeue(info->myqueue);
+            delete_triplet(tempTriplet);
         }
         else {
             info->myqueue->first_node = temp_node->child;
             temp_node->child->parent = NULL;
             info->myqueue->size--;
-            delete_doublet(tempDoublet);
+            delete_triplet(tempTriplet);
             free(temp_node);
         }
         sprintf(buffer, "JOB <%s> REMOVED", jobID);
@@ -206,29 +210,29 @@ char* stop_job(char** tokenized) {
 
 char* poll(char** tokenized) {
     
-    // find total size of the formatted doublets 
-    // and save the pointer for each doublet in an array
+    // find total size of the formatted triplets 
+    // and save the pointer for each triplets in an array
     Queue* myqueue = info->myqueue;
-    Doublet* tempDoublet;
+    Triplet* tempTriplet;
     int total_size = 0;
     int qSize = myqueue->size;
-    char* DoubletPointerArray[qSize];
+    char* TripletPointerArray[qSize];
     Node* temp_node = myqueue->first_node;
     for (int i = 0 ; i < qSize ; i++) {
-        tempDoublet = temp_node->value;
-        int tempSZ = (strlen(tempDoublet->job) + strlen(tempDoublet->jobID) + 10)*2;
+        tempTriplet = temp_node->value;
+        int tempSZ = (strlen(tempTriplet->job) + strlen(tempTriplet->jobID) + 10)*2;
         total_size += tempSZ;
-        DoubletPointerArray[i] = format_doublet_basic(tempDoublet);
+        TripletPointerArray[i] = format_triplet_basic(tempTriplet);
         temp_node = temp_node->child;
     }
 
-    // create the message (string), consisting of all the doublets to be returned
+    // create the message (string), consisting of all the triplets to be returned
     char* buffer = (char*)malloc(total_size + (total_size / 2));
     buffer[0] = '\0';
     strcat(buffer, "\n");
     for (int i = 0 ; i < qSize ; i ++) {
-        strcat(buffer, DoubletPointerArray[i]);
-        free(DoubletPointerArray[i]);   // free the memory for each formatted_doublet
+        strcat(buffer, TripletPointerArray[i]);
+        free(TripletPointerArray[i]);   // free the memory for each formatted_triplet
         if (i == qSize - 1) // to skip "\n" at the end of the string
             continue;
         strcat(buffer, "\n");

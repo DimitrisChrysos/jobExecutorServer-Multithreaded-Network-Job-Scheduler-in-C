@@ -43,24 +43,24 @@ int queue_empty(Queue myqueue);
 int queue_size(Queue myqueue);
 
 
-typedef struct doublet Doublet;
-typedef struct doublet {
+typedef struct triplet Triplet;
+typedef struct triplet {
     char* jobID;
     char* job;
-    // int pid;
-} Doublet;
+    int commander_socket;
+} Triplet;
 
-// initalizes a Doublet
-Doublet* init_doublet(char* jobID, char* job);
+// initalizes a Triplet
+Triplet* init_triplet(char* jobID, char* job, int commander_socket);
 
-// deletes a Doublet
-void delete_doublet(Doublet* mydoublet);
+// deletes a Triplet
+void delete_triplet(Triplet* mytriplet);
 
-// format a Doublet as a string, (memory deallocation is needed!)
-char* format_doublet_basic(Doublet* mydoublet);
+// format a Triplet as a string, (memory deallocation is needed!)
+char* format_triplet_basic(Triplet* mytriplet);
 
-// format a Doublet as a string for issueJob, (memory deallocation is needed!)
-char* format_doublet(Doublet* mydoublet);
+// format a Triplet as a string for issueJob, (memory deallocation is needed!)
+char* format_triplet(Triplet* mytriplet);
 
 // prints the whole queue and it's stats
 void print_queue_and_stats(Queue* myqueue);
