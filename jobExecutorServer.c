@@ -67,8 +67,19 @@ void* controller_thread(void* myArgs) {
     //     printf("tok[%d] = %s\n", i, tokenized[i]);
     // }
 
+    // create a buffer to save the whole unix_command from the tokens
+    char buffer[total_len];
+    for (int i = 1 ; i < total_words ; i++) {
+        if (i == 1) {
+            sprintf(buffer, "%s", tokenized[i]);
+        }
+        else {
+            sprintf(buffer, "%s %s", buffer, tokenized[i]);
+        }
+    }
+
     // call the commands function to execute the command
-    char* returned_message = commands(tokenized, full_job, commander_socket);
+    char* returned_message = commands(tokenized, buffer, commander_socket);
 
     // send the length of the message to be sent afterwards
     int len = strlen(returned_message) + 1;
@@ -152,6 +163,11 @@ void jobExecutorServer(int argc, char *argv[]) {
         // if exit, wait for all the threads to join
         // when the last thread joins, info->open is going to close and we will exit the loop
         if (exit) {
+
+            // to send signal to worker_threads to unpause and join (when no issueJobs)
+            pthread_cond_broadcast(info->cond_worker);  
+            
+            // join all controller threads
             for (int i = 0 ; i < controller_count ; i++) {
                 pthread_join(thread_arr[i], NULL);
             }
@@ -170,7 +186,9 @@ int main(int argc, char *argv[]) {
     // init the ServerInfo struct and set the global pointer
     ServerInfo myServerInfo = {myqueue, 1, 0, 1, atoi(argv[2]), atoi(argv[3]), NULL, NULL};
     info = &myServerInfo;
+    info->mutex_worker = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(info->mutex_worker, NULL);   // init worker mutex
+    info->cond_worker = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
     pthread_cond_init(info->cond_worker, NULL); // init cond var mutex
 
     // create the worker threads
@@ -181,7 +199,7 @@ int main(int argc, char *argv[]) {
 
     // call the jobExecutorServer function
     jobExecutorServer(argc, argv);
-
+    
     // join the worker threads
     for (int i = 0 ; i < info->threadPoolSize ; i++) {
         pthread_join(work_thr[i], NULL);
@@ -204,4 +222,6 @@ int main(int argc, char *argv[]) {
     // destroy the mutex and the cond var of the server info
     pthread_mutex_destroy(info->mutex_worker);
     pthread_cond_destroy(info->cond_worker);
+    free(info->mutex_worker);
+    free(info->cond_worker);
 }

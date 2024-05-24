@@ -55,9 +55,8 @@ void* worker_threads(void* arg) {
     // wait for a signal, from an issueJob commander
     pthread_cond_wait(info->cond_worker, info->mutex_worker);
     
-    // check if the current concurrency level, allows to execute a job
-    // if yes, execute a job
-    if (info->active_processes < info->concurrency) {
+    // check if we can execute a job
+    if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
 
         // get the first process "job" of the queue to be executed
         Triplet* mytriplet = info->myqueue->first_node->value;
@@ -97,16 +96,15 @@ void* worker_threads(void* arg) {
         Triplet* removed_triplet = dequeue(info->myqueue);
         info->active_processes++;
 
-        // create a new process and replace it using execvp with the wanted process
+        // execute the process using fork() and execvp(),
+        // wait for it to end and send its output to the client
         pid_t pid = fork();
         if (pid == 0) { // child process
             
-            // create the file name
+            // create the file name and the file
             pid_t child_pid = getpid();
             char file_name[100];
             sprintf(file_name, "%d.output", child_pid);
-
-            // create the file
             int file = open(file_name, O_WRONLY | O_CREAT, 0777);
 
             // redirect standard output to the file we created
@@ -123,32 +121,30 @@ void* worker_threads(void* arg) {
             // wait for the child to finish
             pid_t child_pid = wait(NULL);
 
-            // open the file created from the child
+            // open the file created from the child, find its size and read it
             char file_name[100];
             sprintf(file_name, "%d.output", child_pid);
-            int file = open(file_name, O_RDONLY);
+            FILE* file = fopen(file_name, "r");
+            fseek(file, 0, SEEK_END);   // find the size of the file
+            long total_chars = ftell(file);
+            fseek(file, 0, SEEK_SET);   // get back to the starting position, of the file
+            char* buffer = (char*)malloc(sizeof(char)*(total_chars + 1));
+            fread(buffer, sizeof(char), total_chars, file); // read the file
 
-            // read the whole file created from the child
-            int total_chars = 1024;
-            char* buffer = (char*)malloc(sizeof(char)*total_chars);
-            while (read(file, buffer, total_chars) > 0) {
-                total_chars += total_chars;
-                buffer = (char*)realloc(buffer, sizeof(char)*total_chars);
-            }
-            
-            // make the buffer a bit larger for the sprintf
-            buffer = (char*)realloc(buffer, sizeof(char)*(total_chars + 100));
-            sprintf(buffer, "-----jobID output start------\n\n%s\
-            \n\n-----jobID output end------", buffer);
+            // format the message to send to Commander (client)
+            char* new_buffer = (char*)malloc(sizeof(char)*(total_chars + 100));
+            sprintf(new_buffer, "\n-----jobID output start------\n\n%s\
+            \n-----jobID output end------\n", buffer);
 
-            // send the message (buffer) to the Commander (client)
+            // send the len of the message and the message, to the Commander (client)
             int client_socket = mytriplet->commander_socket;
-            send(client_socket, buffer, sizeof(char)*(strlen(buffer) + 1), 0);
+            int len = strlen(new_buffer) + 1;
+            send(client_socket, &len, sizeof(int), 0);
+            send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0);
 
-            // free the memory allocated for the buffer
+            // free memory, close client socket and remove the file created by the child
             free(buffer);
-
-            // close the Commander (client) socket and remove the file the child created
+            free(new_buffer);
             close(client_socket);
             remove(file_name);
         }

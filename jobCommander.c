@@ -136,12 +136,17 @@ int jobCommander(int argc, char *argv[]) {
     if (strcmp(argv[3], "issueJob") == 0) {
 
         // make the Commander wait for the server to finish executing the command
-        char finished[50];
-        // TODO: make the server able to execute the commands and after the execution
-        // send "finished" to the Commander to indicate that it finished
-        read(commander_fd, &finished, sizeof(char)*50);
+        // TODO: make the server able to execute the commands
+        
+        // read the len of the message
+        int command_result_len;
+        read(commander_fd, &command_result_len, sizeof(int));
 
-        printf("COMMANDER: %s\n", finished);
+        // read the message
+        char finished[command_result_len];
+        read(commander_fd, &finished, sizeof(char)*command_result_len);
+
+        printf("%s\n", finished);
     }
 
     // close the commander socket
