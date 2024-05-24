@@ -134,6 +134,7 @@ int jobCommander(int argc, char *argv[]) {
         char output[output_len];
         read(commander_fd, &output, sizeof(char)*output_len); // read message
 
+        // print the output
         printf("%s\n", output);
     }
 

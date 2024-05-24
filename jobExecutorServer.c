@@ -130,7 +130,7 @@ void jobExecutorServer(int argc, char *argv[]) {
     // Prepare to accept connections
     listen(server_socket, 5);
 
-    // save the Controller threads to join them after while 
+    // save the Controller threads, to join them when we exit the server 
     int controller_count = 0;
     int arr_size = 10;
     pthread_t* thread_arr = (pthread_t*)malloc(arr_size*sizeof(pthread_t));
@@ -163,9 +163,6 @@ void jobExecutorServer(int argc, char *argv[]) {
         // if exit, wait for all the threads to join
         // when the last thread joins, info->open is going to close and we will exit the loop
         if (exit) {
-
-            // to send signal to worker_threads to unpause and join (when no issueJobs)
-            pthread_cond_broadcast(info->cond_worker);  
             
             // join all controller threads
             for (int i = 0 ; i < controller_count ; i++) {
@@ -199,7 +196,7 @@ int main(int argc, char *argv[]) {
 
     // call the jobExecutorServer function
     jobExecutorServer(argc, argv);
-    
+
     // join the worker threads
     for (int i = 0 ; i < info->threadPoolSize ; i++) {
         pthread_join(work_thr[i], NULL);
