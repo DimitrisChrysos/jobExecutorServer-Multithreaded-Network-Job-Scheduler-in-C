@@ -203,5 +203,5 @@ int main(int argc, char *argv[]) {
 
     // destroy the mutex and the cond var of the server info
     pthread_mutex_destroy(info->mutex_worker);
-    pthread_cond_destroy(&info->cond_worker);
+    pthread_cond_destroy(info->cond_worker);
 }

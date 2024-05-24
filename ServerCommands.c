@@ -131,7 +131,7 @@ void* worker_threads(void* arg) {
             // read the whole file created from the child
             int total_chars = 1024;
             char* buffer = (char*)malloc(sizeof(char)*total_chars);
-            while (read(file_name, buffer, total_chars) > 0) {
+            while (read(file, buffer, total_chars) > 0) {
                 total_chars += total_chars;
                 buffer = (char*)realloc(buffer, sizeof(char)*total_chars);
             }
