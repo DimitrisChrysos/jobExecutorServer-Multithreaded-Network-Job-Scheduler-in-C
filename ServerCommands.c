@@ -44,29 +44,7 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     }
     else if (strcmp(tokenized[0], "exit" ) == 0) {
         
-        // close the server
-        info->open = 0;
-
-        // send a message to all the Commanders (clients), that the server terminated
-        // without executing their command and close the client_socket
-        char client_msg[] = "SERVER TERMINATED BEFORE EXECUTION";
-        char* send_msg = (char*)malloc(sizeof(char)*(strlen(client_msg) + 1));
-        strcpy(send_msg, client_msg);
-        Node* tempNode = info->myqueue->first_node;
-        Triplet* tempTriplet;
-        for (int i = 0 ; i < info->myqueue->size ; i++) {
-            tempTriplet = tempNode->value;
-            int client_socket = tempTriplet->commander_socket;
-            send(client_socket, send_msg, sizeof(char)*(strlen(send_msg) + 1), 0);
-            close(client_socket);
-            tempNode = tempNode->child;
-        }
-        free(send_msg);
-
-        // return the message
-        char buf[] = "SERVER TERMINATED";
-        char* message = (char*)malloc(sizeof(char)*(strlen(buf) + 1));
-        strcpy(message, buf);
+        char* message = exit_server();
         return message;
     }
 }
@@ -263,4 +241,33 @@ char* poll(char** tokenized) {
 
     // return the message
     return buffer;
+}
+
+
+char* exit_server() {
+
+    // close the server
+    info->open = 0;
+
+    // send a message to all the Commanders (clients), that the server terminated
+    // without executing their command and close the client_socket
+    char client_msg[] = "SERVER TERMINATED BEFORE EXECUTION";
+    char* send_msg = (char*)malloc(sizeof(char)*(strlen(client_msg) + 1));
+    strcpy(send_msg, client_msg);
+    Node* tempNode = info->myqueue->first_node;
+    Triplet* tempTriplet;
+    for (int i = 0 ; i < info->myqueue->size ; i++) {
+        tempTriplet = tempNode->value;
+        int client_socket = tempTriplet->commander_socket;
+        send(client_socket, send_msg, sizeof(char)*(strlen(send_msg) + 1), 0);
+        close(client_socket);
+        tempNode = tempNode->child;
+    }
+    free(send_msg);
+
+    // return the message
+    char buf[] = "SERVER TERMINATED";
+    char* message = (char*)malloc(sizeof(char)*(strlen(buf) + 1));
+    strcpy(message, buf);
+    return message;
 }

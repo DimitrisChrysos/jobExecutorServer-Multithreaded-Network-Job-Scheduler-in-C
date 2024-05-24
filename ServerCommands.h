@@ -27,3 +27,6 @@ char* stop_job(char** tokenized);
 
 // function for the poll command
 char* poll(char** tokenized);
+
+// function for the exit command
+char* exit_server();
