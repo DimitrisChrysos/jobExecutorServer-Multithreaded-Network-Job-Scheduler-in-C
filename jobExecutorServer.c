@@ -17,14 +17,14 @@
 
 ServerInfo *info;
 
-typedef struct thread_args ThreadArgs;
-typedef struct thread_args {
+typedef struct controller_args ControllerArgs;
+typedef struct controller_args {
     int commander_socket;
-} ThreadArgs;
+} ControllerArgs;
 
-void* handle_commander(void* myArgs) {
+void* controller_thread(void* myArgs) {
     // int commander_socket = *((int *)com_socket);
-    ThreadArgs* insideArgs = (ThreadArgs*)myArgs;
+    ControllerArgs* insideArgs = (ControllerArgs*)myArgs;
     int commander_socket = insideArgs->commander_socket;
 
     // read the number of words of the job
@@ -136,9 +136,9 @@ void jobExecutorServer(int argc, char *argv[]) {
 
         // handle the Commander-Server communication
         pthread_t temp_thread;
-        ThreadArgs* myArgs = (ThreadArgs*)malloc(sizeof(ThreadArgs));
+        ControllerArgs* myArgs = (ControllerArgs*)malloc(sizeof(ControllerArgs));
         myArgs->commander_socket = commander_socket;
-        pthread_create(&temp_thread, NULL, &handle_commander, (void*)myArgs);
+        pthread_create(&temp_thread, NULL, &controller_thread, (void*)myArgs);
 
         // save the thread to join it later
         // if thread array is filled, double it's size
@@ -167,12 +167,25 @@ int main(int argc, char *argv[]) {
     // create a Queue for the jobs
     Queue* myqueue = createQueue();
 
-    // Init the ServerInfo struct and set the global pointer
-    ServerInfo myServerInfo = {myqueue, 1, 1, atoi(argv[2]), atoi(argv[3])};
+    // init the ServerInfo struct and set the global pointer
+    ServerInfo myServerInfo = {myqueue, 1, 0, 1, atoi(argv[2]), atoi(argv[3]), NULL, NULL};
     info = &myServerInfo;
+    pthread_mutex_init(info->mutex_worker, NULL);   // init worker mutex
+    pthread_cond_init(info->cond_worker, NULL); // init cond var mutex
+
+    // create the worker threads
+    pthread_t work_thr[info->threadPoolSize];
+    for (int i = 0 ; i < info->threadPoolSize ; i++) {
+        pthread_create(&(work_thr[i]), NULL, &worker_threads, NULL);
+    }
 
     // call the jobExecutorServer function
     jobExecutorServer(argc, argv);
+
+    // join the worker threads
+    for (int i = 0 ; i < info->threadPoolSize ; i++) {
+        pthread_join(work_thr[i], NULL);
+    }
 
     // delete every triplet of the queue
     if (info->myqueue->size > 0) {  // free the memory from the waiting queue
@@ -187,4 +200,8 @@ int main(int argc, char *argv[]) {
 
     // delete the Queue
     deleteQueue(info->myqueue);
+
+    // destroy the mutex and the cond var of the server info
+    pthread_mutex_destroy(info->mutex_worker);
+    pthread_cond_destroy(&info->cond_worker);
 }

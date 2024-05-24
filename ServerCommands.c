@@ -20,8 +20,8 @@ Triplet* issueJob(char* job, int commander_socket);
 char* commands(char** tokenized, char* unix_command, int commander_socket) {
     if (strcmp(tokenized[0], "issueJob" ) == 0) {
         
-        Triplet* returned_message = issueJob(unix_command, commander_socket);
-        char* message = format_triplet(returned_message);
+        Triplet* myTriplet = issueJob(unix_command, commander_socket);
+        char* message = format_triplet(myTriplet);
         return message;
     }
     else if (strcmp(tokenized[0], "setConcurrency" ) == 0) {
@@ -49,88 +49,121 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     }
 }
 
-// void signal_handerUSR2(int sig) {}
+void* worker_threads(void* arg) {
+    pthread_mutex_lock(info->mutex_worker);
 
-// void exec_commands_in_queue(int sig) {
+    // wait for a signal, from an issueJob commander
+    pthread_cond_wait(info->cond_worker, info->mutex_worker);
+    
+    // check if the current concurrency level, allows to execute a job
+    // if yes, execute a job
+    if (info->active_processes < info->concurrency) {
 
-//     // If queued processes exist execute them, until we reach the concurrency limit
-//     if (info->running_queue->size < info->concurrency && info->myqueue->size != 0) {
-        
-//         // execute processes until capacity (info->concurrency) reached
-//         for (int i = info->running_queue->size ; i < info->concurrency ; i++) {
+        // get the first process "job" of the queue to be executed
+        Triplet* mytriplet = info->myqueue->first_node->value;
+        int len = strlen(mytriplet->job);
+        char job[len];
+        strcpy(job, mytriplet->job);
 
-//             // Check if there are no processes left
-//             if (info->myqueue->size == 0)
-//                 break;
+        // find the "amount" of words in the "job" to be executed
+        int amount = 0;
+        int total_len = strlen(job) + 1;
+        for (int i = 0 ; i < total_len ; i++) {
+            if (job[i] == ' ') {
+                amount++;
+            } 
+        }
+        amount++;
 
-//             // get the first process "job" of the queue to be executed
-//             Triplet* mytriplet = info->myqueue->first_node->value;
-//             int len = strlen(mytriplet->job);
-//             char job[len];
-//             strcpy(job, mytriplet->job);
+        // tokenize the string "job" using "amount + 1" for the tokenized array to end with NULL
+        char** tokenized = (char **)malloc((amount+1)*sizeof(char*));
+        for (int i = 0 ; i < amount ; i++) {
+            tokenized[i] = (char*)malloc((total_len+1) * sizeof(char));
+        }
+        tokenized[amount] = NULL;
+        char* tok = strtok(job, " ");
+        int count = 0;
+        while (tok != NULL) {
+            if (count == amount) {
+                break;
+            }
+            strcpy(tokenized[count], tok);
+            tok = strtok(NULL, " ");
+            count++;
+        }
+        tokenized[amount] = NULL;
 
-//             // find the "amount" of words in the "job" to be executed
-//             int amount = 0;
-//             int total_len = strlen(job) + 1;
-//             for (int i = 0 ; i < total_len ; i++) {
-//                 if (job[i] == ' ') {
-//                     amount++;
-//                 } 
-//             }
-//             amount++;
+        // remove the front process from the queue and add one to the active_processes
+        Triplet* removed_triplet = dequeue(info->myqueue);
+        info->active_processes++;
+
+        // create a new process and replace it using execvp with the wanted process
+        pid_t pid = fork();
+        if (pid == 0) { // child process
             
-//             // tokenize the string "job" using "amount + 1" for the tokenized array to end with NULL
-//             char** tokenized = (char **)malloc((amount+1)*sizeof(char*));
-//             for (int i = 0 ; i < amount ; i++) {
-//                 tokenized[i] = (char*)malloc((total_len+1) * sizeof(char));
-//             }
-//             tokenized[amount] = NULL;
-//             char* tok = strtok(job, " ");
-//             int count = 0;
-//             while (tok != NULL) {
-//                 if (count == amount) {
-//                     break;
-//                 }
-//                 strcpy(tokenized[count], tok);
-//                 tok = strtok(NULL, " ");
-//                 count++;
-//             }
-//             tokenized[amount] = NULL;
+            // create the file name
+            pid_t child_pid = getpid();
+            char file_name[100];
+            sprintf(file_name, "%d.output", child_pid);
+
+            // create the file
+            int file = open(file_name, O_WRONLY | O_CREAT, 0777);
+
+            // redirect standard output to the file we created
+            dup2(file, STDOUT_FILENO);
+
+            // close the file
+            close(file);
+
+            // execute the wanted process
+            execvp(tokenized[0], tokenized);
+        }
+        else if (pid > 0) { // parent process
+
+            // wait for the child to finish
+            pid_t child_pid = wait(NULL);
+
+            // open the file created from the child
+            char file_name[100];
+            sprintf(file_name, "%d.output", child_pid);
+            int file = open(file_name, O_RDONLY);
+
+            // read the whole file created from the child
+            int total_chars = 1024;
+            char* buffer = (char*)malloc(sizeof(char)*total_chars);
+            while (read(file_name, buffer, total_chars) > 0) {
+                total_chars += total_chars;
+                buffer = (char*)realloc(buffer, sizeof(char)*total_chars);
+            }
             
+            // make the buffer a bit larger for the sprintf
+            buffer = (char*)realloc(buffer, sizeof(char)*(total_chars + 100));
+            sprintf(buffer, "-----jobID output start------\n\n%s\
+            \n\n-----jobID output end------", buffer);
 
-//             // remove the front process from the queue and add it to the running_queue
-//             Triplet* removed_triplet = dequeue(info->myqueue);
-//             enqueue(info->running_queue, removed_triplet);
+            // send the message (buffer) to the Commander (client)
+            int client_socket = mytriplet->commander_socket;
+            send(client_socket, buffer, sizeof(char)*(strlen(buffer) + 1), 0);
 
-//             // fix the queuePosition for every item of the main queue 
-//             int qSize = info->myqueue->size;
-//             Node* temp_node = info->myqueue->first_node;
-//             for (int i = 0 ; i < qSize ; i++) {
-//                 Triplet* tempTriplet = temp_node->value;
-//                 tempTriplet->queuePosition = i;
-//                 temp_node = temp_node->child;
-//             }
-            
-//             // create a new process and replace it using execvp with the wanted process
-//             pid_t pid = fork();
-//             if (pid == 0) { // child process
+            // free the memory allocated for the buffer
+            free(buffer);
 
-//                 // execute the wanted process
-//                 execvp(tokenized[0], tokenized);
-//             }
-            
-//             // add the pid of the process to the triplet (usefull to terminate the process)
-//             removed_triplet->pid = pid;
+            // close the Commander (client) socket and remove the file the child created
+            close(client_socket);
+            remove(file_name);
+        }
 
-//             // free the memory of "tokenized"
-//             for (int i = 0; i < amount + 1; i++) {
-//                 if (tokenized[i] != NULL) {
-//                     free(tokenized[i]);
-//                 }
-//             }
-//         }
-//     }
-// }
+        // free the memory of "tokenized"
+        for (int i = 0; i < amount + 1; i++) {
+            if (tokenized[i] != NULL) {
+                free(tokenized[i]);
+            }
+        }
+    }
+    
+
+    pthread_mutex_unlock(info->mutex_worker);
+}
 
 Triplet* issueJob(char* job, int commander_socket) {
 
@@ -146,6 +179,7 @@ Triplet* issueJob(char* job, int commander_socket) {
     // add the job to the queue only if the buffer is not full
     if (info->myqueue->size < info->bufferSize) {
         enqueue(info->myqueue, mytriplet);
+        pthread_cond_broadcast(info->cond_worker);
     }
 
     // TODO: need to make it check, if it can run and then run

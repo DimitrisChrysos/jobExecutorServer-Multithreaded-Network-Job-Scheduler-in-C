@@ -6,9 +6,12 @@ typedef struct server_info ServerInfo;
 typedef struct server_info {
     Queue* myqueue;
     int concurrency;
+    int active_processes;
     int open;
     int bufferSize;
     int threadPoolSize;
+    pthread_mutex_t* mutex_worker;
+    pthread_cond_t* cond_worker;
 } ServerInfo;
 
 extern ServerInfo *info;
@@ -16,8 +19,8 @@ extern ServerInfo *info;
 // matches the command given to it's corresponding function
 char* commands(char** tokenized, char* unix_command, int commander_socket);
 
-// // the signal_handler after SIGCHILD signal - executes the processes in queue
-// void exec_commands_in_queue(int sig);
+// function that satisfies the worker threads operations 
+void* worker_threads(void* arg);
 
 // function for the issueJob command
 Triplet* issueJob(char* job, int commander_socket);
