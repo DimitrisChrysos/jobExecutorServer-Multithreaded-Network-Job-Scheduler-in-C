@@ -107,46 +107,34 @@ int jobCommander(int argc, char *argv[]) {
     }
     send(commander_fd, &exit, sizeof(int), 0);
 
-    // send the number of words of the job to the server
+    // send the number of words of the job, the length of the job and the job to the server
     int total_words = argc - 3;
-    send(commander_fd, &total_words, sizeof(int), 0);
-
-    // send the job length to the server
+    send(commander_fd, &total_words, sizeof(int), 0);   // send number of words
     int total_len = strlen(job) + 1;
-    send(commander_fd, &total_len, sizeof(int), 0);
-
-    // send the job to the server
-    send(commander_fd, job, strlen(job) + 1, 0);
+    send(commander_fd, &total_len, sizeof(int), 0); // send job length
+    send(commander_fd, job, strlen(job) + 1, 0);    // send the job
     
-    // free the job
+    // free the memory for the job
     free(job);
 
-    // read the length of the message to be read afterwards
+    // read the length of the message and the message
     int len;
-    read(commander_fd, &len, sizeof(int));
-
-    // read the message from the server and print it
+    read(commander_fd, &len, sizeof(int));  // read length
     char server_message[len];
-    read(commander_fd, &server_message, sizeof(server_message));
+    read(commander_fd, &server_message, sizeof(server_message));    // read the message
     printf("COMMANDER: %s\n", server_message);
-
 
     // check if commander makes an issueJob command, if yes print the message returned when
     // the job is finished
     if (strcmp(argv[3], "issueJob") == 0) {
-
-        // make the Commander wait for the server to finish executing the command
-        // TODO: make the server able to execute the commands
         
-        // read the len of the message
-        int command_result_len;
-        read(commander_fd, &command_result_len, sizeof(int));
+        // read the length of the output and the output of the command
+        int output_len;
+        read(commander_fd, &output_len, sizeof(int));   // read length
+        char output[output_len];
+        read(commander_fd, &output, sizeof(char)*output_len); // read message
 
-        // read the message
-        char finished[command_result_len];
-        read(commander_fd, &finished, sizeof(char)*command_result_len);
-
-        printf("%s\n", finished);
+        printf("%s\n", output);
     }
 
     // close the commander socket
