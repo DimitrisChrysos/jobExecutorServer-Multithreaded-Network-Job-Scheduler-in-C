@@ -15,3 +15,4 @@ jobCommander:
 clean:
 	rm -f bin/jobCommander
 	rm -f bin/jobExecutorServer
+	rm -f bin/progDelay
