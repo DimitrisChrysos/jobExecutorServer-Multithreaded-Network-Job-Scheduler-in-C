@@ -1,15 +1,15 @@
-# To run the following, type the following commands in a terminal, inside this directory: 
-# 1. make clean
-# 2. make
-# Now open two terminals, using split option
-# 1. On the left: ./jobExecutorServer [portnum] [bufferSize] [threadPoolSize]
-# 2. On the right: ./jobCommander [serverName] [portNum] [jobCommanderInputCommand]
+# To run the Makefile, type "make" at the terminal. 
+# Now open two terminals, using split option:
+# 1. On the left: ./bin/jobExecutorServer [portnum] [bufferSize] [threadPoolSize]
+# 2. On the right: ./bin/jobCommander [serverName] [portNum] [jobCommanderInputCommand]
+
+.PHONY: clean
 
 jobCommander:
-	gcc -o jobCommander jobCommander.c queue.c
-	gcc -o jobExecutorServer jobExecutorServer.c queue.c ServerCommands.c -lpthread
-
+	gcc -o bin/jobCommander src/jobCommander.c src/queue.c
+	gcc -o bin/jobExecutorServer src/jobExecutorServer.c src/queue.c src/ServerCommands.c -lpthread
+	gcc -o bin/progDelay src/progDelay.c
 
 clean:
-	rm -f jobCommander
-	rm -f jobExecutorServer
+	rm -f bin/jobCommander
+	rm -f bin/jobExecutorServer

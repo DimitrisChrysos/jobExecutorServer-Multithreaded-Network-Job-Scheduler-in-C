@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "queue.h"
-#include "string.h"
+#include "../include/queue.h"
+#include <string.h>
 
 // for Queues
 

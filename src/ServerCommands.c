@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <pthread.h>
-#include "ServerCommands.h"
+#include "../include/ServerCommands.h"
 #include <semaphore.h>
 
 Triplet* issueJob(char* job, int commander_socket);
@@ -59,6 +59,7 @@ void* worker_threads(void* arg) {
         // wait for a signal, from an issueJob commander (or from exit)
         pthread_cond_wait(info->cond_worker, info->mutex_worker);
 
+        // check for server closure
         if (info->open == 0)
             break;
         
@@ -111,7 +112,7 @@ void* worker_threads(void* arg) {
                 // create the file name and the file
                 pid_t child_pid = getpid();
                 char file_name[100];
-                sprintf(file_name, "%d.output", child_pid);
+                sprintf(file_name, "build/%d.output", child_pid);
                 int file = open(file_name, O_WRONLY | O_CREAT, 0777);
 
                 // redirect standard output to the file we created
@@ -131,7 +132,7 @@ void* worker_threads(void* arg) {
 
                 // open the file created from the child, find its size and read it
                 char file_name[100];
-                sprintf(file_name, "%d.output", child_pid);
+                sprintf(file_name, "build/%d.output", child_pid);
                 FILE* file = fopen(file_name, "r");
                 fseek(file, 0, SEEK_END);   // find the size of the file
                 long total_chars = ftell(file);

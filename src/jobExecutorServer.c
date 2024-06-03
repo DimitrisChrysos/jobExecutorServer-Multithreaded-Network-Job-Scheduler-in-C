@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <pthread.h>
-#include "ServerCommands.h"
+#include "../include/ServerCommands.h"
 #include <semaphore.h>
 
 ServerInfo *info;

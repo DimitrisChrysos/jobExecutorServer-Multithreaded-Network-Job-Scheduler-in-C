@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include "queue.h"
+#include "../include/queue.h"
 #include <semaphore.h>
 
 #define SERVER_HOSTNAME "localhost"     // TODO: delete this from the dit machines
