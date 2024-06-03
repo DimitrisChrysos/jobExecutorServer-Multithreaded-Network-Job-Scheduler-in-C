@@ -1,11 +1,9 @@
-./jobCommander issueJob progDelay 1000
-./jobCommander issueJob progDelay 110
-./jobCommander issueJob progDelay 115
-./jobCommander issueJob progDelay 120
-./jobCommander issueJob progDelay 125
-./jobCommander poll running
-./jobCommander poll queued
-./jobCommander setConcurrency 2
-./jobCommander poll running
-./jobCommander poll queued
-./jobCommander exit
+./bin/jobCommander linux01.di.uoa.gr 2035 issueJob ./bin/progDelay 2
+./bin/jobCommander linux01.di.uoa.gr 2035 issueJob ./bin/progDelay 3
+./bin/jobCommander linux01.di.uoa.gr 2035 issueJob ./bin/progDelay 4
+./bin/jobCommander linux01.di.uoa.gr 2035 issueJob ./bin/progDelay 5
+./bin/jobCommander linux01.di.uoa.gr 2035 issueJob ./bin/progDelay 6
+./bin/jobCommander linux01.di.uoa.gr 2035 poll
+./bin/jobCommander linux01.di.uoa.gr 2035 setConcurrency 2
+./bin/jobCommander linux01.di.uoa.gr 2035 poll
+./bin/jobCommander linux01.di.uoa.gr 2035 exit

@@ -263,10 +263,20 @@ char* stop_job(char** tokenized) {
 }
 
 char* poll(char** tokenized) {
-    
+
+    // The buffer of the jobs
+    Queue* myqueue = info->myqueue;
+
+    // if the buffer is empty return "BUFFER IS EMPTY"
+    if (myqueue->size == 0) {
+        char temp_buffer[] = "BUFFER IS EMPTY";
+        char* message = (char*)malloc(sizeof(char)*(strlen(temp_buffer) + 1));
+        strcpy(message, temp_buffer);
+        return message;
+    }
+
     // find total size of the formatted triplets 
     // and save the pointer for each triplets in an array
-    Queue* myqueue = info->myqueue;
     Triplet* tempTriplet;
     int total_size = 0;
     int qSize = myqueue->size;
