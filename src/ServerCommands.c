@@ -51,13 +51,20 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     }
 }
 
+// static int stattemp = 10;
 void* worker_threads(void* arg) {
+    // printf("1. align = %ld\n", info->mutex_worker->__align);
     pthread_mutex_lock(info->mutex_worker);
+    // info->concurrency++;
+    // printf("2. info->concurrency = %d\n", info->concurrency);
 
     while(info->open) {
 
-        // wait for a signal, from an issueJob commander (or from exit)
-        pthread_cond_wait(info->cond_worker, info->mutex_worker);
+        // if the buffer is empty, wait for a signal from a controller thread
+        // to continue the worker threads
+        if (info->myqueue->size == 0) {
+            pthread_cond_wait(info->cond_worker, info->mutex_controller);
+        }
 
         // check for server closure
         if (info->open == 0)
@@ -103,6 +110,12 @@ void* worker_threads(void* arg) {
             // remove the front process from the queue and add one to the active_processes
             Triplet* removed_triplet = dequeue(info->myqueue);
             info->active_processes++;
+
+            // if the buffer was full, send a signal to the controller thread
+            // to notify that the buffer now has available space
+            if (info->myqueue->size + 1 == info->bufferSize) {
+                pthread_cond_broadcast(info->cond_controller);
+            }
 
             // execute the process using fork() and execvp(),
             // wait for it to end and send its output to the client

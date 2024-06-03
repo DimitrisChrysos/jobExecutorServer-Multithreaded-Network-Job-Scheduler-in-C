@@ -12,6 +12,8 @@ typedef struct server_info {
     int threadPoolSize;
     pthread_mutex_t* mutex_worker;
     pthread_cond_t* cond_worker;
+    pthread_mutex_t* mutex_controller;
+    pthread_cond_t* cond_controller;
 } ServerInfo;
 
 extern ServerInfo *info;

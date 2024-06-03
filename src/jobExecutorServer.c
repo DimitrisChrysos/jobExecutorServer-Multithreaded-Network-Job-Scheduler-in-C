@@ -23,6 +23,9 @@ typedef struct controller_args {
 } ControllerArgs;
 
 void* controller_thread(void* myArgs) {
+
+    pthread_mutex_lock(info->mutex_controller);
+
     // int commander_socket = *((int *)com_socket);
     ControllerArgs* insideArgs = (ControllerArgs*)myArgs;
     int commander_socket = insideArgs->commander_socket;
@@ -78,6 +81,13 @@ void* controller_thread(void* myArgs) {
         }
     }
 
+    // if the buffer is full, wait for a signal from a worker thread 
+    // to continue the controller thread
+    if (info->myqueue->size == info->bufferSize) {
+        
+        pthread_cond_wait(info->cond_controller, info->mutex_worker);
+    }
+
     // call the commands function to execute the command
     char* returned_message = commands(tokenized, buffer, commander_socket);
 
@@ -103,6 +113,8 @@ void* controller_thread(void* myArgs) {
 
     // // close the Commander socket
     // close(commander_socket);
+
+    pthread_mutex_unlock(info->mutex_controller);
 }
 
 void jobExecutorServer(int argc, char *argv[]) {
@@ -166,13 +178,17 @@ int main(int argc, char *argv[]) {
     // create a Queue for the jobs
     Queue* myqueue = createQueue();
 
-    // init the ServerInfo struct and set the global pointer
+    // init the ServerInfo struct (including cond vars and mutexes) and set the global pointer
     ServerInfo myServerInfo = {myqueue, 1, 0, 1, atoi(argv[2]), atoi(argv[3]), NULL, NULL};
     info = &myServerInfo;
     info->mutex_worker = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(info->mutex_worker, NULL);   // init worker mutex
     info->cond_worker = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-    pthread_cond_init(info->cond_worker, NULL); // init cond var mutex
+    pthread_cond_init(info->cond_worker, NULL); // init worker cond var
+    info->mutex_controller = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(info->mutex_controller, NULL);   // init commander mutex
+    info->cond_controller = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+    pthread_cond_init(info->cond_controller, NULL); // init commander cond var
 
     // create the worker threads
     pthread_t work_thr[info->threadPoolSize];
@@ -207,4 +223,8 @@ int main(int argc, char *argv[]) {
     pthread_cond_destroy(info->cond_worker);
     free(info->mutex_worker);
     free(info->cond_worker);
+    pthread_mutex_destroy(info->mutex_controller);
+    pthread_cond_destroy(info->cond_controller);
+    free(info->mutex_controller);
+    free(info->cond_controller);
 }
