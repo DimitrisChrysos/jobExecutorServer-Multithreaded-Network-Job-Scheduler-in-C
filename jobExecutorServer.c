@@ -81,7 +81,7 @@ void* controller_thread(void* myArgs) {
     // call the commands function to execute the command
     char* returned_message = commands(tokenized, buffer, commander_socket);
 
-    // send the length of the message to be sent afterwards
+    // send the length of the message that will be sent afterwards
     int len = strlen(returned_message) + 1;
     send(commander_socket, &len, sizeof(int), 0);
 
@@ -129,11 +129,11 @@ void jobExecutorServer(int argc, char *argv[]) {
 
     // Prepare to accept connections
     listen(server_socket, 5);
-
-    // save the Controller threads, to join them when we exit the server 
-    int controller_count = 0;
-    int arr_size = 10;
-    pthread_t* thread_arr = (pthread_t*)malloc(arr_size*sizeof(pthread_t));
+    
+    // create the detach attribute for the detached thread creation later inside the for loop
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     // keep the server open
     while (info->open) {
@@ -145,34 +145,20 @@ void jobExecutorServer(int argc, char *argv[]) {
         int exit;
         read(commander_socket, &exit, sizeof(int));
 
-        // handle the Commander-Server communication
+        // handle the Commander-Server communication using detached threads
         pthread_t temp_thread;
         ControllerArgs* myArgs = (ControllerArgs*)malloc(sizeof(ControllerArgs));
         myArgs->commander_socket = commander_socket;
-        pthread_create(&temp_thread, NULL, &controller_thread, (void*)myArgs);
-
-        // save the thread to join it later
-        // if thread array is filled, double it's size
-        if (controller_count == arr_size) {
-            arr_size += arr_size;
-            thread_arr = (pthread_t*)realloc(thread_arr, arr_size*sizeof(pthread_t));
-        }
-        thread_arr[controller_count] = temp_thread;
-        controller_count++;
+        pthread_create(&temp_thread, &attr, &controller_thread, (void*)myArgs);
 
         // if exit, wait for all the threads to join
         // when the last thread joins, info->open is going to close and we will exit the loop
         if (exit) {
             
-            // join all controller threads
-            for (int i = 0 ; i < controller_count ; i++) {
-                pthread_join(thread_arr[i], NULL);
-            }
+            pthread_attr_destroy(&attr);
+            pthread_exit(0);
         }
     }
-
-    // free the memory allocated for the thread array
-    free(thread_arr);
 }
 
 int main(int argc, char *argv[]) {

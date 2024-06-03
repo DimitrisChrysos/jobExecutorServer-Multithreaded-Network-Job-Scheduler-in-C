@@ -27,7 +27,6 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     else if (strcmp(tokenized[0], "setConcurrency" ) == 0) {
 
         info->concurrency = atoi(tokenized[1]);
-        // exec_commands_in_queue(-1);
         char* message = (char*)malloc((strlen("CONCURRENCY SET AT Ν") + 20)*sizeof(char));
         sprintf(message, "CONCURRENCY SET AT %d", info->concurrency);
         return message;
