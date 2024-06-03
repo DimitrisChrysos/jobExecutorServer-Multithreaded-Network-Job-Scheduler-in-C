@@ -1,7 +1,9 @@
 # To run the Makefile, type "make" at the terminal. 
 # Now open two terminals, using split option:
-# 1. On the left: ./bin/jobExecutorServer [portnum] [bufferSize] [threadPoolSize]
-# 2. On the right: ./bin/jobCommander [serverName] [portNum] [jobCommanderInputCommand]
+# 1. On the 1st termnial: ./bin/jobExecutorServer [portnum] [bufferSize] [threadPoolSize]
+# 2. On the 2nd terminal:
+# 	a) ./bin/jobCommander [serverName] [portNum] [jobCommanderInputCommand]
+#	b) run a bash script using: bash tests/[bash script name]
 
 .PHONY: clean
 
