@@ -15,106 +15,52 @@
 #include "../include/ServerCommands.h"
 #include <semaphore.h>
 
+// stores the server info
 ServerInfo *info;
 
-typedef struct controller_args ControllerArgs;
-typedef struct controller_args {
-    int commander_socket;
-} ControllerArgs;
+// worker threads function
+void* worker_threads(void* arg) {
 
+    // get the lock
+    // printf("1. worker_thread = %ld\n", pthread_self());
+    pthread_mutex_lock(info->mutex_worker);
+    // printf("2. worker_thread = %ld\n", pthread_self());
+
+    while(info->open) {
+
+        // wait for a signal from a controller thread to continue the worker threads
+        if (info->myqueue->size == 0)
+            pthread_cond_wait(info->cond_worker, info->mutex_worker);
+        
+        // check for server closure
+        if (info->open == 0)
+            break;
+        
+        // try executing a job
+        execute_job();
+    }
+    
+    // release the lock
+    pthread_mutex_unlock(info->mutex_worker);
+}
+
+// controller threads function
 void* controller_thread(void* myArgs) {
 
-    pthread_mutex_lock(info->mutex_controller);
+    // get the lock
+    pthread_mutex_lock(info->mutex_worker);
 
-    // int commander_socket = *((int *)com_socket);
-    ControllerArgs* insideArgs = (ControllerArgs*)myArgs;
-    int commander_socket = insideArgs->commander_socket;
-
-    // read the number of words of the job
-    int total_words;
-    read(commander_socket, &total_words, sizeof(int));
-    // printf("SERVER: total_words = %d\n", total_words);
-
-    // read the total_len of the job
-    int total_len;
-    read(commander_socket, &total_len, sizeof(int));
-    // printf("SERVER: total_len = %d\n", total_len);
-
-    // read the job from the Commander and print it
-    char *commander_message = (char*)calloc(total_len, sizeof(char));
-    read(commander_socket, commander_message, total_len*sizeof(char));
-    printf("SERVER: %s\n\n", commander_message);
-
-    // save the commander_message as full_job
-    char* full_job = (char*)calloc(total_len, sizeof(char));
-    strcpy(full_job, commander_message);
-
-    // tokenize the string
-    char** tokenized = (char **)malloc(total_words * sizeof(char*));   
-    for (int i = 0 ; i < total_words ; i++) {
-        tokenized[i] = malloc(total_len * sizeof(char));
-    } 
-    char* tok = strtok(commander_message, " ");
-    int count = 0;
-    while (tok != NULL) {
-        if (count == total_words) {
-            break;
-        }
-        strcpy(tokenized[count], tok);
-        tok = strtok(NULL, " ");
-        count++;
-    }
-
-    // // print the tokens
-    // for (int i = 0 ; i < total_words ; i++) {
-    //     printf("tok[%d] = %s\n", i, tokenized[i]);
-    // }
-
-    // create a buffer to save the whole unix_command from the tokens
-    char buffer[total_len];
-    for (int i = 1 ; i < total_words ; i++) {
-        if (i == 1) {
-            sprintf(buffer, "%s", tokenized[i]);
-        }
-        else {
-            sprintf(buffer, "%s %s", buffer, tokenized[i]);
-        }
-    }
-
-    // if the buffer is full, wait for a signal from a worker thread 
-    // to continue the controller thread
+    // if buffer full, wait for a signal from a worker thread to continue the controller thread
     if (info->myqueue->size == info->bufferSize) {
         
-        pthread_cond_wait(info->cond_controller, info->mutex_worker);
+        pthread_cond_wait(info->cond_controller, info->mutex_controller);
     }
 
-    // call the commands function to execute the command
-    char* returned_message = commands(tokenized, buffer, commander_socket);
+    // prepare to call and call the commands function to decide the action of the server
+    call_commands(myArgs);
 
-    // send the length of the message that will be sent afterwards
-    int len = strlen(returned_message) + 1;
-    send(commander_socket, &len, sizeof(int), 0);
-
-    // send a message back to the Commander
-    send(commander_socket, returned_message, sizeof(char)*(strlen(returned_message) + 1), 0);
-
-    // free the commander_message, full_job, the returned_message and the com_socket
-    free(commander_message);
-    free(full_job);
-    free(returned_message);
-    free(insideArgs);
-
-    // free the memory of "tokenized"
-    for (int i = 0; i < total_words; i++) {
-        if (tokenized[i] != NULL) {
-            free(tokenized[i]);
-        }
-    }
-
-    // // close the Commander socket
-    // close(commander_socket);
-
-    pthread_mutex_unlock(info->mutex_controller);
+    // release the lock
+    pthread_mutex_unlock(info->mutex_worker);
 }
 
 void jobExecutorServer(int argc, char *argv[]) {
