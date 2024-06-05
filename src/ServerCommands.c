@@ -63,7 +63,9 @@ Triplet* issueJob(char* job, int commander_socket) {
     Triplet* mytriplet = init_triplet(jobID, job, commander_socket);
 
     // add the job to the queue
+    pthread_mutex_lock(info->mutex_queue);
     enqueue(info->myqueue, mytriplet);
+    pthread_mutex_unlock(info->mutex_queue);
 
     // notify a worker thread that the job buffer is not empty
     pthread_cond_signal(info->cond_worker);
@@ -107,7 +109,9 @@ char* stop_job(char** tokenized) {
             free(temp_node);
         }
         else if (temp_node->child == NULL) {
+            pthread_mutex_lock(info->mutex_queue);
             tempTriplet = dequeue(info->myqueue);
+            pthread_mutex_unlock(info->mutex_queue);
             delete_triplet(tempTriplet);
         }
         else {
@@ -205,8 +209,9 @@ char* exit_server() {
 
 
 void execute_job() {
+    printf("Hello I am here! - Inside execute_job()!\n");
+    
     // check if we can execute a job
-    printf("activ_proc = %d || concurrency = %d\n", info->active_processes, info->concurrency);
     if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
 
         // get the first process "job" of the queue to be executed
@@ -244,13 +249,15 @@ void execute_job() {
         tokenized[amount] = NULL;
 
         // remove the front process from the queue and add one to the active_processes
+        pthread_mutex_lock(info->mutex_queue);
         Triplet* removed_triplet = dequeue(info->myqueue);
+        pthread_mutex_unlock(info->mutex_queue);
         info->active_processes++;
 
-        // if the buffer was full, send a signal to the controller thread
+        // if the buffer was full, send a signal to a controller thread
         // to notify that the buffer now has available space
         if (info->myqueue->size + 1 == info->bufferSize) {
-            pthread_cond_broadcast(info->cond_controller);
+            pthread_cond_signal(info->cond_controller);
         }
 
         // execute the process using fork() and execvp(),

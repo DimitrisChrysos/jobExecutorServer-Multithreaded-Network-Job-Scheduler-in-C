@@ -36,8 +36,8 @@ void* worker_threads(void* arg) {
             // release the lock
             pthread_mutex_unlock(info->mutex_worker);
         }
-        
-        printf("queue_sz = %d\n", info->myqueue->size);
+
+        // printf("queue_sz = %d\n", info->myqueue->size);
         
         // check for server closure
         if (info->open == 0)
@@ -52,16 +52,16 @@ void* worker_threads(void* arg) {
 void* controller_thread(void* myArgs) {
 
     // get the lock
-    // printf("1. I arrived here: %ld\n", pthread_self());
     pthread_mutex_lock(info->mutex_controller);
-    // printf("2. I arrived here: %ld\n", pthread_self());
 
-    // // if buffer full, wait for jobs to be removed
-    // if (info->myqueue->size == info->bufferSize)
-    //     pthread_cond_wait(info->cond_controller, info->mutex_controller);
+    // if buffer full, wait for jobs to be removed
+    if (info->myqueue->size == info->bufferSize)
+        pthread_cond_wait(info->cond_controller, info->mutex_controller);
 
     // prepare and call the commands function, to decide the action of the server
+    printf("1. *********\n");
     call_commands(myArgs);
+    printf("2. *********\n");
 
     // release the lock
     pthread_mutex_unlock(info->mutex_controller);
@@ -139,13 +139,15 @@ int main(int argc, char *argv[]) {
     pthread_mutex_init(info->mutex_controller, NULL);   // init commander mutex
     info->cond_controller = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
     pthread_cond_init(info->cond_controller, NULL); // init commander cond var
+    info->mutex_queue = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(info->mutex_queue, NULL);   // init commander mutex
 
     // create the worker threads
     pthread_t work_thr[info->threadPoolSize];
     for (int i = 0 ; i < info->threadPoolSize ; i++) {
         pthread_create(&(work_thr[i]), NULL, &worker_threads, NULL);
     }
-
+    
     // call the jobExecutorServer function
     jobExecutorServer(argc, argv);
 
@@ -177,4 +179,6 @@ int main(int argc, char *argv[]) {
     pthread_cond_destroy(info->cond_controller);
     free(info->mutex_controller);
     free(info->cond_controller);
+    pthread_mutex_destroy(info->mutex_queue);
+    free(info->mutex_queue);
 }
