@@ -88,7 +88,7 @@ void jobExecutorServer(int argc, char *argv[]) {
     }
 
     // Prepare to accept connections
-    listen(server_socket, 5);
+    listen(server_socket, 100);
     
     // create the detach attribute for the detached thread creation later inside the for loop
     pthread_attr_t attr;
@@ -114,9 +114,9 @@ void jobExecutorServer(int argc, char *argv[]) {
         // if exit, wait for all the threads to join
         // when the last thread joins, info->open is going to close and we will exit the loop
         if (exit) {
-            
             pthread_attr_destroy(&attr);
             pthread_exit(0);
+            // while(info->active_processes != 0) {}
         }
     }
 }
@@ -138,7 +138,9 @@ int main(int argc, char *argv[]) {
     info->cond_controller = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
     pthread_cond_init(info->cond_controller, NULL); // init commander cond var
     info->mutex_queue = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init(info->mutex_queue, NULL);   // init commander mutex
+    pthread_mutex_init(info->mutex_queue, NULL);   // init queue mutex
+    info->mutex_concurrency = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(info->mutex_concurrency, NULL);   // init concurrency mutex
 
     // create the worker threads
     pthread_t work_thr[info->threadPoolSize];
@@ -179,4 +181,6 @@ int main(int argc, char *argv[]) {
     free(info->cond_controller);
     pthread_mutex_destroy(info->mutex_queue);
     free(info->mutex_queue);
+    pthread_mutex_destroy(info->mutex_concurrency);
+    free(info->mutex_concurrency);
 }

@@ -26,9 +26,12 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     }
     else if (strcmp(tokenized[0], "setConcurrency" ) == 0) {
 
+        pthread_mutex_lock(info->mutex_concurrency);
         info->concurrency = atoi(tokenized[1]);
         char* message = (char*)malloc((strlen("CONCURRENCY SET AT Ν") + 20)*sizeof(char));
         sprintf(message, "CONCURRENCY SET AT %d", info->concurrency);
+        pthread_mutex_unlock(info->mutex_concurrency);
+        pthread_cond_broadcast(info->cond_worker);
         return message;
     }
     else if (strcmp(tokenized[0], "stop" ) == 0) {
@@ -38,7 +41,11 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     }
     else if (strcmp(tokenized[0], "poll" ) == 0) {
         
+        pthread_mutex_lock(info->mutex_concurrency);
         char* message = poll(tokenized);
+        // printf("POLL: conc = %d | activ_proc = %d\n", info->concurrency, info->active_processes);
+        pthread_mutex_unlock(info->mutex_concurrency);
+        
         return message; 
     }
     else if (strcmp(tokenized[0], "exit" ) == 0) {
@@ -92,6 +99,11 @@ char* stop_job(char** tokenized) {
         }
         temp_node = temp_node->child;
     }
+
+    // send "-1" to the commander of the triplet, that its job stopped
+    // as to not try to read the jobs output
+    int negative_one = -1;
+    send(tempTriplet->commander_socket, &negative_one, sizeof(int), 0); 
 
     // if it's waiting, remove it from myqueue
     // at the end, found or not, return the appropriate message
@@ -210,8 +222,11 @@ char* exit_server() {
 
 void execute_job() {
     
-    // check if we can execute a job
+    // if possible, execute a job
+    pthread_mutex_lock(info->mutex_concurrency);
+    // printf("WORKER: conc = %d | activ_proc = %d\n", info->concurrency, info->active_processes);
     if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
+        pthread_mutex_unlock(info->mutex_concurrency);
 
         // get the first process "job" of the queue to be executed
         Triplet* mytriplet = info->myqueue->first_node->value;
@@ -251,7 +266,9 @@ void execute_job() {
         pthread_mutex_lock(info->mutex_queue);
         Triplet* removed_triplet = dequeue(info->myqueue);
         pthread_mutex_unlock(info->mutex_queue);
+        pthread_mutex_lock(info->mutex_concurrency);
         info->active_processes++;
+        pthread_mutex_unlock(info->mutex_concurrency);
 
         // if the buffer was full, send a signal to a controller thread
         // to notify that the buffer now has available space
@@ -283,7 +300,9 @@ void execute_job() {
 
             // wait for the child to finish
             pid_t child_pid = wait(NULL);
+            pthread_mutex_lock(info->mutex_concurrency);
             info->active_processes--;
+            pthread_mutex_unlock(info->mutex_concurrency);
 
             // // send signal to worker threads, that a job is finished
             // pthread_cond_broadcast(info->cond_worker);
@@ -300,14 +319,18 @@ void execute_job() {
 
             // format the message to send to Commander (client)
             char* new_buffer = (char*)malloc(sizeof(char)*(total_chars + 100));
-            sprintf(new_buffer, "\n-----jobID output start------\n\n%s\
-            \n-----jobID output end------\n", buffer);
+            sprintf(new_buffer, "\n-----%s output start------\n\n%s\
+            \n-----%s output end------\n", removed_triplet->jobID, buffer, removed_triplet->jobID);
+
+
 
             // send the len of the message and the message, to the Commander (client)
             int client_socket = mytriplet->commander_socket;
             int len = strlen(new_buffer) + 1;
             send(client_socket, &len, sizeof(int), 0);
             send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0);
+
+            printf("##len = %d\nnew_buffer = %s\n", len, new_buffer);
 
             // free memory, close client socket and remove the file created by the child
             free(buffer);
@@ -323,6 +346,8 @@ void execute_job() {
             }
         }
     }
+    else
+        pthread_mutex_unlock(info->mutex_concurrency);
 }
 
 void call_commands(void* myArgs) {

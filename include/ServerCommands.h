@@ -15,6 +15,7 @@ typedef struct server_info {
     pthread_mutex_t* mutex_controller;
     pthread_cond_t* cond_controller;
     pthread_mutex_t* mutex_queue;
+    pthread_mutex_t* mutex_concurrency;
 } ServerInfo;
 
 extern ServerInfo *info;

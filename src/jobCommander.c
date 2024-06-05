@@ -131,11 +131,16 @@ int jobCommander(int argc, char *argv[]) {
         // read the length of the output and the output of the command
         int output_len;
         read(commander_fd, &output_len, sizeof(int));   // read length
-        char output[output_len];
-        read(commander_fd, &output, sizeof(char)*output_len); // read message
+        printf("yes | output_len = %d\n", output_len);
+        // TODO: check if it is a job that has stopped
+        if (output_len != -1) {
+            char output[output_len];
+            read(commander_fd, &output, sizeof(char)*output_len); // read message
 
-        // print the output
-        printf("%s\n", output);
+            // print the output
+            // printf("*!%s*\n", output);
+            printf("*%s\n", output);
+        }
     }
 
     // close the commander socket
