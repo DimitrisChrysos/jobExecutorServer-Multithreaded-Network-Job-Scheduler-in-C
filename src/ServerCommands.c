@@ -209,7 +209,6 @@ char* exit_server() {
 
 
 void execute_job() {
-    printf("Hello I am here! - Inside execute_job()!\n");
     
     // check if we can execute a job
     if (info->active_processes < info->concurrency && info->myqueue->size != 0) {

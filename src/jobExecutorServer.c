@@ -59,9 +59,7 @@ void* controller_thread(void* myArgs) {
         pthread_cond_wait(info->cond_controller, info->mutex_controller);
 
     // prepare and call the commands function, to decide the action of the server
-    printf("1. *********\n");
     call_commands(myArgs);
-    printf("2. *********\n");
 
     // release the lock
     pthread_mutex_unlock(info->mutex_controller);
