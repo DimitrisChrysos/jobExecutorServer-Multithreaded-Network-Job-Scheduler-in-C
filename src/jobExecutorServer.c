@@ -21,16 +21,23 @@ ServerInfo *info;
 // worker threads function
 void* worker_threads(void* arg) {
 
-    // get the lock
-    // printf("1. worker_thread = %ld\n", pthread_self());
-    pthread_mutex_lock(info->mutex_worker);
-    // printf("2. worker_thread = %ld\n", pthread_self());
-
+    // keep the worker threads open
     while(info->open) {
 
-        // wait for a signal from a controller thread to continue the worker threads
-        if (info->myqueue->size == 0)
+        // if buffer empty, wait for jobs to be added
+        if (info->myqueue->size == 0) {
+            
+            // get the lock
+            pthread_mutex_lock(info->mutex_worker);
+            
+            // wait
             pthread_cond_wait(info->cond_worker, info->mutex_worker);
+        
+            // release the lock
+            pthread_mutex_unlock(info->mutex_worker);
+        }
+        
+        printf("queue_sz = %d\n", info->myqueue->size);
         
         // check for server closure
         if (info->open == 0)
@@ -39,28 +46,25 @@ void* worker_threads(void* arg) {
         // try executing a job
         execute_job();
     }
-    
-    // release the lock
-    pthread_mutex_unlock(info->mutex_worker);
 }
 
 // controller threads function
 void* controller_thread(void* myArgs) {
 
     // get the lock
-    pthread_mutex_lock(info->mutex_worker);
+    // printf("1. I arrived here: %ld\n", pthread_self());
+    pthread_mutex_lock(info->mutex_controller);
+    // printf("2. I arrived here: %ld\n", pthread_self());
 
-    // if buffer full, wait for a signal from a worker thread to continue the controller thread
-    if (info->myqueue->size == info->bufferSize) {
-        
-        pthread_cond_wait(info->cond_controller, info->mutex_controller);
-    }
+    // // if buffer full, wait for jobs to be removed
+    // if (info->myqueue->size == info->bufferSize)
+    //     pthread_cond_wait(info->cond_controller, info->mutex_controller);
 
-    // prepare to call and call the commands function to decide the action of the server
+    // prepare and call the commands function, to decide the action of the server
     call_commands(myArgs);
 
     // release the lock
-    pthread_mutex_unlock(info->mutex_worker);
+    pthread_mutex_unlock(info->mutex_controller);
 }
 
 void jobExecutorServer(int argc, char *argv[]) {

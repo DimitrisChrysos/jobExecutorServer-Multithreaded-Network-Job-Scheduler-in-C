@@ -51,193 +51,6 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
     }
 }
 
-void execute_job() {
-    // check if we can execute a job
-    if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
-
-        // get the first process "job" of the queue to be executed
-        Triplet* mytriplet = info->myqueue->first_node->value;
-        int len = strlen(mytriplet->job);
-        char job[len];
-        strcpy(job, mytriplet->job);
-
-        // find the "amount" of words in the "job" to be executed
-        int amount = 0;
-        int total_len = strlen(job) + 1;
-        for (int i = 0 ; i < total_len ; i++) {
-            if (job[i] == ' ') {
-                amount++;
-            } 
-        }
-        amount++;
-
-        // tokenize the string "job" using "amount + 1" for the tokenized array to end with NULL
-        char** tokenized = (char **)malloc((amount+1)*sizeof(char*));
-        for (int i = 0 ; i < amount ; i++) {
-            tokenized[i] = (char*)malloc((total_len+1) * sizeof(char));
-        }
-        tokenized[amount] = NULL;
-        char* tok = strtok(job, " ");
-        int count = 0;
-        while (tok != NULL) {
-            if (count == amount) {
-                break;
-            }
-            strcpy(tokenized[count], tok);
-            tok = strtok(NULL, " ");
-            count++;
-        }
-        tokenized[amount] = NULL;
-
-        // remove the front process from the queue and add one to the active_processes
-        Triplet* removed_triplet = dequeue(info->myqueue);
-        info->active_processes++;
-
-        // printf("2. worker_thread || thread_id = %ld || ", pthread_self());
-        // printf("job = %s\n", removed_triplet->jobID);
-
-        // if the buffer was full, send a signal to the controller thread
-        // to notify that the buffer now has available space
-        if (info->myqueue->size + 1 == info->bufferSize) {
-            pthread_cond_broadcast(info->cond_controller);
-        }
-
-        // execute the process using fork() and execvp(),
-        // wait for it to end and send its output to the client
-        pid_t pid = fork();
-        if (pid == 0) { // child process
-            
-            // create the file name and the file
-            pid_t child_pid = getpid();
-            char file_name[100];
-            sprintf(file_name, "build/%d.output", child_pid);
-            int file = open(file_name, O_WRONLY | O_CREAT, 0777);
-
-            // redirect standard output to the file we created
-            dup2(file, STDOUT_FILENO);
-
-            // close the file
-            close(file);
-
-            // execute the wanted process
-            execvp(tokenized[0], tokenized);
-        }
-        else if (pid > 0) { // parent process
-
-            // wait for the child to finish
-            pid_t child_pid = wait(NULL);
-            info->active_processes--;
-
-            // // send signal to worker threads, that a job is finished
-            // pthread_cond_broadcast(info->cond_worker);
-
-            // open the file created from the child, find its size and read it
-            char file_name[100];
-            sprintf(file_name, "build/%d.output", child_pid);
-            FILE* file = fopen(file_name, "r");
-            fseek(file, 0, SEEK_END);   // find the size of the file
-            long total_chars = ftell(file);
-            fseek(file, 0, SEEK_SET);   // get back to the starting position, of the file
-            char* buffer = (char*)malloc(sizeof(char)*(total_chars + 1));
-            fread(buffer, sizeof(char), total_chars, file); // read the file
-
-            // format the message to send to Commander (client)
-            char* new_buffer = (char*)malloc(sizeof(char)*(total_chars + 100));
-            sprintf(new_buffer, "\n-----jobID output start------\n\n%s\
-            \n-----jobID output end------\n", buffer);
-
-            // send the len of the message and the message, to the Commander (client)
-            int client_socket = mytriplet->commander_socket;
-            int len = strlen(new_buffer) + 1;
-            send(client_socket, &len, sizeof(int), 0);
-            send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0);
-
-            // free memory, close client socket and remove the file created by the child
-            free(buffer);
-            free(new_buffer);
-            close(client_socket);
-            remove(file_name);
-        }
-
-        // free the memory of "tokenized"
-        for (int i = 0; i < amount + 1; i++) {
-            if (tokenized[i] != NULL) {
-                free(tokenized[i]);
-            }
-        }
-    }
-}
-
-
-
-void call_commands(void* myArgs) {
-
-    // get the commander socket
-    ControllerArgs* insideArgs = (ControllerArgs*)myArgs;
-    int commander_socket = insideArgs->commander_socket;
-
-    // read the number of words, the total_len and the job itself
-    int total_words;
-    read(commander_socket, &total_words, sizeof(int));  // read number of words
-    int total_len;
-    read(commander_socket, &total_len, sizeof(int));    // read total_len
-    char *commander_message = (char*)calloc(total_len, sizeof(char));
-    read(commander_socket, commander_message, total_len*sizeof(char));  // read the job
-    printf("SERVER: %s\n\n", commander_message);
-
-    // save the commander_message as full_job
-    char* full_job = (char*)calloc(total_len, sizeof(char));
-    strcpy(full_job, commander_message);
-
-    // tokenize the string
-    char** tokenized = (char **)malloc(total_words * sizeof(char*));   
-    for (int i = 0 ; i < total_words ; i++) {
-        tokenized[i] = malloc(total_len * sizeof(char));
-    } 
-    char* tok = strtok(commander_message, " ");
-    int count = 0;
-    while (tok != NULL) {
-        if (count == total_words) {
-            break;
-        }
-        strcpy(tokenized[count], tok);
-        tok = strtok(NULL, " ");
-        count++;
-    }
-
-    // create a buffer to save the whole unix_command from the tokens
-    char buffer[total_len];
-    for (int i = 1 ; i < total_words ; i++) {
-        if (i == 1) {
-            sprintf(buffer, "%s", tokenized[i]);
-        }
-        else {
-            sprintf(buffer, "%s %s", buffer, tokenized[i]);
-        }
-    }
-
-    // call the commands function to execute the command
-    char* returned_message = commands(tokenized, buffer, commander_socket);
-
-    // send the length of the message and the message to the commander
-    int len = strlen(returned_message) + 1;
-    send(commander_socket, &len, sizeof(int), 0);   // send lenth
-    send(commander_socket, returned_message, sizeof(char)*(strlen(returned_message) + 1), 0);   // send message
-
-    // free the commander_message, full_job, the returned_message and the com_socket
-    free(commander_message);
-    free(full_job);
-    free(returned_message);
-    free(insideArgs);
-
-    // free the memory of "tokenized"
-    for (int i = 0; i < total_words; i++) {
-        if (tokenized[i] != NULL) {
-            free(tokenized[i]);
-        }
-    }
-}
-
 Triplet* issueJob(char* job, int commander_socket) {
 
     // format the triplet variables
@@ -249,10 +62,11 @@ Triplet* issueJob(char* job, int commander_socket) {
     // create a job Triplet for the queue
     Triplet* mytriplet = init_triplet(jobID, job, commander_socket);
 
-    // add the job to the queue and notify the worker threads 
-    // that the job buffer is not empty
+    // add the job to the queue
     enqueue(info->myqueue, mytriplet);
-    pthread_cond_broadcast(info->cond_worker);
+
+    // notify a worker thread that the job buffer is not empty
+    pthread_cond_signal(info->cond_worker);
 
     return mytriplet;
 }
@@ -386,4 +200,189 @@ char* exit_server() {
     char* message = (char*)malloc(sizeof(char)*(strlen(buf) + 1));
     strcpy(message, buf);
     return message;
+}
+
+
+
+void execute_job() {
+    // check if we can execute a job
+    printf("activ_proc = %d || concurrency = %d\n", info->active_processes, info->concurrency);
+    if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
+
+        // get the first process "job" of the queue to be executed
+        Triplet* mytriplet = info->myqueue->first_node->value;
+        int len = strlen(mytriplet->job);
+        char job[len];
+        strcpy(job, mytriplet->job);
+
+        // find the "amount" of words in the "job" to be executed
+        int amount = 0;
+        int total_len = strlen(job) + 1;
+        for (int i = 0 ; i < total_len ; i++) {
+            if (job[i] == ' ') {
+                amount++;
+            } 
+        }
+        amount++;
+
+        // tokenize the string "job" using "amount + 1" for the tokenized array to end with NULL
+        char** tokenized = (char **)malloc((amount+1)*sizeof(char*));
+        for (int i = 0 ; i < amount ; i++) {
+            tokenized[i] = (char*)malloc((total_len+1) * sizeof(char));
+        }
+        tokenized[amount] = NULL;
+        char* tok = strtok(job, " ");
+        int count = 0;
+        while (tok != NULL) {
+            if (count == amount) {
+                break;
+            }
+            strcpy(tokenized[count], tok);
+            tok = strtok(NULL, " ");
+            count++;
+        }
+        tokenized[amount] = NULL;
+
+        // remove the front process from the queue and add one to the active_processes
+        Triplet* removed_triplet = dequeue(info->myqueue);
+        info->active_processes++;
+
+        // if the buffer was full, send a signal to the controller thread
+        // to notify that the buffer now has available space
+        if (info->myqueue->size + 1 == info->bufferSize) {
+            pthread_cond_broadcast(info->cond_controller);
+        }
+
+        // execute the process using fork() and execvp(),
+        // wait for it to end and send its output to the client
+        pid_t pid = fork();
+        if (pid == 0) { // child process
+            
+            // create the file name and the file
+            pid_t child_pid = getpid();
+            char file_name[100];
+            sprintf(file_name, "build/%d.output", child_pid);
+            int file = open(file_name, O_WRONLY | O_CREAT, 0777);
+
+            // redirect standard output to the file we created
+            dup2(file, STDOUT_FILENO);
+
+            // close the file
+            close(file);
+
+            // execute the wanted process
+            execvp(tokenized[0], tokenized);
+        }
+        else if (pid > 0) { // parent process
+
+            // wait for the child to finish
+            pid_t child_pid = wait(NULL);
+            info->active_processes--;
+
+            // // send signal to worker threads, that a job is finished
+            // pthread_cond_broadcast(info->cond_worker);
+
+            // open the file created from the child, find its size and read it
+            char file_name[100];
+            sprintf(file_name, "build/%d.output", child_pid);
+            FILE* file = fopen(file_name, "r");
+            fseek(file, 0, SEEK_END);   // find the size of the file
+            long total_chars = ftell(file);
+            fseek(file, 0, SEEK_SET);   // get back to the starting position, of the file
+            char* buffer = (char*)malloc(sizeof(char)*(total_chars + 1));
+            fread(buffer, sizeof(char), total_chars, file); // read the file
+
+            // format the message to send to Commander (client)
+            char* new_buffer = (char*)malloc(sizeof(char)*(total_chars + 100));
+            sprintf(new_buffer, "\n-----jobID output start------\n\n%s\
+            \n-----jobID output end------\n", buffer);
+
+            // send the len of the message and the message, to the Commander (client)
+            int client_socket = mytriplet->commander_socket;
+            int len = strlen(new_buffer) + 1;
+            send(client_socket, &len, sizeof(int), 0);
+            send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0);
+
+            // free memory, close client socket and remove the file created by the child
+            free(buffer);
+            free(new_buffer);
+            close(client_socket);
+            remove(file_name);
+        }
+
+        // free the memory of "tokenized"
+        for (int i = 0; i < amount + 1; i++) {
+            if (tokenized[i] != NULL) {
+                free(tokenized[i]);
+            }
+        }
+    }
+}
+
+void call_commands(void* myArgs) {
+
+    // get the commander socket
+    ControllerArgs* insideArgs = (ControllerArgs*)myArgs;
+    int commander_socket = insideArgs->commander_socket;
+
+    // read the number of words, the total_len and the job itself
+    int total_words;
+    read(commander_socket, &total_words, sizeof(int));  // read number of words
+    int total_len;
+    read(commander_socket, &total_len, sizeof(int));    // read total_len
+    char *commander_message = (char*)calloc(total_len, sizeof(char));
+    read(commander_socket, commander_message, total_len*sizeof(char));  // read the job
+    printf("SERVER: %s\n\n", commander_message);
+
+    // save the commander_message as full_job
+    char* full_job = (char*)calloc(total_len, sizeof(char));
+    strcpy(full_job, commander_message);
+
+    // tokenize the string
+    char** tokenized = (char **)malloc(total_words * sizeof(char*));   
+    for (int i = 0 ; i < total_words ; i++) {
+        tokenized[i] = malloc(total_len * sizeof(char));
+    } 
+    char* tok = strtok(commander_message, " ");
+    int count = 0;
+    while (tok != NULL) {
+        if (count == total_words) {
+            break;
+        }
+        strcpy(tokenized[count], tok);
+        tok = strtok(NULL, " ");
+        count++;
+    }
+
+    // create a buffer to save the whole unix_command from the tokens
+    char buffer[total_len];
+    for (int i = 1 ; i < total_words ; i++) {
+        if (i == 1) {
+            sprintf(buffer, "%s", tokenized[i]);
+        }
+        else {
+            sprintf(buffer, "%s %s", buffer, tokenized[i]);
+        }
+    }
+
+    // call the commands function to execute the command
+    char* returned_message = commands(tokenized, buffer, commander_socket);
+
+    // send the length of the message and the message to the commander
+    int len = strlen(returned_message) + 1;
+    send(commander_socket, &len, sizeof(int), 0);   // send lenth
+    send(commander_socket, returned_message, sizeof(char)*(strlen(returned_message) + 1), 0);   // send message
+
+    // free the commander_message, full_job, the returned_message and the com_socket
+    free(commander_message);
+    free(full_job);
+    free(returned_message);
+    free(insideArgs);
+
+    // free the memory of "tokenized"
+    for (int i = 0; i < total_words; i++) {
+        if (tokenized[i] != NULL) {
+            free(tokenized[i]);
+        }
+    }
 }

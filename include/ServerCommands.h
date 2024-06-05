@@ -21,6 +21,19 @@ extern ServerInfo *info;
 // matches the command given to it's corresponding function
 char* commands(char** tokenized, char* unix_command, int commander_socket);
 
+// function for the issueJob command 
+// returns a pointer to the triplet of the job added to the queue
+Triplet* issueJob(char* job, int commander_socket);
+
+// function for the stop jobID command
+char* stop_job(char** tokenized);
+
+// function for the poll command
+char* poll(char** tokenized);
+
+// function for the exit command
+char* exit_server();
+
 // helper function for the worker_threads to execute a job
 void execute_job();
 
@@ -32,15 +45,3 @@ typedef struct controller_args {
 
 // helper function for the controller_threads to call the commands function
 void call_commands(void* myArgs);
-
-// function for the issueJob command
-Triplet* issueJob(char* job, int commander_socket);
-
-// function for the stop jobID command
-char* stop_job(char** tokenized);
-
-// function for the poll command
-char* poll(char** tokenized);
-
-// function for the exit command
-char* exit_server();

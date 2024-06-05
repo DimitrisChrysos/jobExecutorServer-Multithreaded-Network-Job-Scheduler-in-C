@@ -7,7 +7,7 @@
 
 .PHONY: clean
 
-jobCommander:
+everything:
 	gcc -o bin/jobCommander src/jobCommander.c src/queue.c
 	gcc -o bin/jobExecutorServer src/jobExecutorServer.c src/queue.c src/ServerCommands.c -lpthread
 	gcc -o bin/progDelay src/progDelay.c
