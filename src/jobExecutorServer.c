@@ -115,7 +115,7 @@ void jobExecutorServer(int argc, char *argv[]) {
         // when the last thread joins, info->open is going to close and we will exit the loop
         if (exit) {
             pthread_attr_destroy(&attr);
-            pthread_exit(0);
+            break;
             // while(info->active_processes != 0) {}
         }
     }
@@ -183,4 +183,6 @@ int main(int argc, char *argv[]) {
     free(info->mutex_queue);
     pthread_mutex_destroy(info->mutex_concurrency);
     free(info->mutex_concurrency);
+
+    pthread_exit(0);
 }
