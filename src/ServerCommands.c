@@ -224,8 +224,9 @@ void execute_job() {
     
     // if possible, execute a job
     pthread_mutex_lock(info->mutex_concurrency);
-    // printf("WORKER: conc = %d | activ_proc = %d\n", info->concurrency, info->active_processes);
     if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
+        info->active_processes++;
+        // printf("WORKER: conc = %d | activ_proc = %d\n", info->concurrency, info->active_processes);
         pthread_mutex_unlock(info->mutex_concurrency);
 
         // remove the front process "job" from the queue and execute it
@@ -235,11 +236,6 @@ void execute_job() {
         int len = strlen(removed_triplet->job);
         char job[len];
         strcpy(job, removed_triplet->job);
-
-        // add one to the active_processes
-        pthread_mutex_lock(info->mutex_concurrency);
-        info->active_processes++;
-        pthread_mutex_unlock(info->mutex_concurrency);
 
         // if the buffer was full, send a signal to a controller thread
         // to notify that the buffer now has available space
