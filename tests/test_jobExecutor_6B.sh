@@ -13,5 +13,5 @@ sleep 1
 ./bin/jobCommander linux01.di.uoa.gr 2035 stop job_6
 sleep 1
 ./bin/jobCommander linux01.di.uoa.gr 2035 poll
-# sleep 1
-# ./bin/jobCommander linux01.di.uoa.gr 2035 exit
+sleep 1
+./bin/jobCommander linux01.di.uoa.gr 2035 exit

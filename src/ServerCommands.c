@@ -228,11 +228,24 @@ void execute_job() {
     if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
         pthread_mutex_unlock(info->mutex_concurrency);
 
-        // get the first process "job" of the queue to be executed
-        Triplet* mytriplet = info->myqueue->first_node->value;
-        int len = strlen(mytriplet->job);
+        // remove the front process "job" from the queue and execute it
+        pthread_mutex_lock(info->mutex_queue);
+        Triplet* removed_triplet = dequeue(info->myqueue);
+        pthread_mutex_unlock(info->mutex_queue);
+        int len = strlen(removed_triplet->job);
         char job[len];
-        strcpy(job, mytriplet->job);
+        strcpy(job, removed_triplet->job);
+
+        // add one to the active_processes
+        pthread_mutex_lock(info->mutex_concurrency);
+        info->active_processes++;
+        pthread_mutex_unlock(info->mutex_concurrency);
+
+        // if the buffer was full, send a signal to a controller thread
+        // to notify that the buffer now has available space
+        if (info->myqueue->size + 1 == info->bufferSize) {
+            pthread_cond_signal(info->cond_controller);
+        }
 
         // find the "amount" of words in the "job" to be executed
         int amount = 0;
@@ -261,20 +274,6 @@ void execute_job() {
             count++;
         }
         tokenized[amount] = NULL;
-
-        // remove the front process from the queue and add one to the active_processes
-        pthread_mutex_lock(info->mutex_queue);
-        Triplet* removed_triplet = dequeue(info->myqueue);
-        pthread_mutex_unlock(info->mutex_queue);
-        pthread_mutex_lock(info->mutex_concurrency);
-        info->active_processes++;
-        pthread_mutex_unlock(info->mutex_concurrency);
-
-        // if the buffer was full, send a signal to a controller thread
-        // to notify that the buffer now has available space
-        if (info->myqueue->size + 1 == info->bufferSize) {
-            pthread_cond_signal(info->cond_controller);
-        }
 
         // execute the process using fork() and execvp(),
         // wait for it to end and send its output to the client
@@ -325,12 +324,16 @@ void execute_job() {
 
 
             // send the len of the message and the message, to the Commander (client)
-            int client_socket = mytriplet->commander_socket;
+            int client_socket = removed_triplet->commander_socket;
             int len = strlen(new_buffer) + 1;
-            send(client_socket, &len, sizeof(int), 0);
-            send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0);
+            if (send(client_socket, &len, sizeof(int), 0) == -1) {
+                printf("failed to send %s output len to client socket %d...\n", removed_triplet->jobID, client_socket);
+            }
+            if (send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0) == -1) {
+                printf("failed to send %s output to client %d...\n", removed_triplet->jobID, client_socket);
+            }
 
-            printf("##len = %d\nnew_buffer = %s\n", len, new_buffer);
+            // printf("## len = %d || client socket = %d\nnew_buffer = %s\n", len, client_socket, new_buffer);
 
             // free memory, close client socket and remove the file created by the child
             free(buffer);
