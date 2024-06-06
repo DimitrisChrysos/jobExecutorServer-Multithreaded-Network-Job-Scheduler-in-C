@@ -101,7 +101,7 @@ int jobCommander(int argc, char *argv[]) {
     freeaddrinfo(result);
 
     // send 1 if exit, else send 0
-    int exit = 0;
+    int exit = -1;
     if (strcmp(argv[3], "exit") == 0) {
         exit = 1;
     }

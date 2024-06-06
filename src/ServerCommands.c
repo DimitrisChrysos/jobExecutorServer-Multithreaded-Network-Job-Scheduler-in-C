@@ -100,14 +100,18 @@ char* stop_job(char** tokenized) {
         temp_node = temp_node->child;
     }
 
-    // send "-1" to the commander of the triplet, that its job stopped
-    // as to not try to read the jobs output
-    int negative_one = -1;
-    send(tempTriplet->commander_socket, &negative_one, sizeof(int), 0); 
+
 
     // if it's waiting, remove it from myqueue
     // at the end, found or not, return the appropriate message
     if (waiting) {
+
+        // send "-1" to the commander of the triplet, that its job stopped
+        // as to not try to read the jobs output
+        int negative_one = -1;
+        send(tempTriplet->commander_socket, &negative_one, sizeof(int), 0); 
+
+        // remove from queue and return appropriate message
         if (temp_node->parent != NULL) {
             if (temp_node->child == NULL) {
                 info->myqueue->last_node = temp_node->parent;
@@ -294,7 +298,7 @@ void execute_job() {
         else if (pid > 0) { // parent process
 
             // wait for the child to finish
-            pid_t child_pid = wait(NULL);
+            pid_t child_pid = waitpid(pid, NULL, 0);
             pthread_mutex_lock(info->mutex_concurrency);
             info->active_processes--;
             pthread_mutex_unlock(info->mutex_concurrency);
@@ -327,7 +331,7 @@ void execute_job() {
                 printf("failed to send %s output to client %d...\n", removed_triplet->jobID, client_socket);
             }
 
-            // printf("## len = %d || client socket = %d\nnew_buffer = %s\n", len, client_socket, new_buffer);
+            // printf("## len = %d || client socket = %d\njob = %s || new_buffer = %s\n", len, client_socket, removed_triplet->job, new_buffer);
 
             // free memory, close client socket and remove the file created by the child
             free(buffer);

@@ -113,10 +113,9 @@ void jobExecutorServer(int argc, char *argv[]) {
 
         // if exit, wait for all the threads to join
         // when the last thread joins, info->open is going to close and we will exit the loop
-        if (exit) {
+        if (exit == 1) {
             pthread_attr_destroy(&attr);
             break;
-            // while(info->active_processes != 0) {}
         }
     }
 }
