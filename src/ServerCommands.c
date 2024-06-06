@@ -360,7 +360,7 @@ void call_commands(void* myArgs) {
     read(commander_socket, &total_len, sizeof(int));    // read total_len
     char *commander_message = (char*)calloc(total_len, sizeof(char));
     read(commander_socket, commander_message, total_len*sizeof(char));  // read the job
-    printf("SERVER: %s\n\n", commander_message);
+    // printf("SERVER: %s\n\n", commander_message);
 
     // save the commander_message as full_job
     char* full_job = (char*)calloc(total_len, sizeof(char));

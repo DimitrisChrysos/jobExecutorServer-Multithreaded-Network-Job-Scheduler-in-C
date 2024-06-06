@@ -122,7 +122,7 @@ int jobCommander(int argc, char *argv[]) {
     read(commander_fd, &len, sizeof(int));  // read length
     char server_message[len];
     read(commander_fd, &server_message, sizeof(server_message));    // read the message
-    printf("COMMANDER: %s\n", server_message);
+    printf("%s\n", server_message);
 
     // check if commander makes an issueJob command, if yes print the message returned when
     // the job is finished
