@@ -321,8 +321,6 @@ void execute_job() {
             sprintf(new_buffer, "\n-----%s output start------\n\n%s\
             \n-----%s output end------\n", removed_triplet->jobID, buffer, removed_triplet->jobID);
 
-
-
             // send the len of the message and the message, to the Commander (client)
             int client_socket = removed_triplet->commander_socket;
             int len = strlen(new_buffer) + 1;
