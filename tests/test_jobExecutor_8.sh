@@ -1,3 +1,3 @@
 source ./tests/server_host.sh
-./bin/jobCommander $SERVER_HOST 2035 poll
-./bin/jobCommander $SERVER_HOST 2035 exit
+./bin/jobCommander $SERVER_HOST $PORT poll
+./bin/jobCommander $SERVER_HOST $PORT exit
