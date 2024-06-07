@@ -36,8 +36,6 @@ void* worker_threads(void* arg) {
             // release the lock
             pthread_mutex_unlock(info->mutex_worker);
         }
-
-        // printf("queue_sz = %d\n", info->myqueue->size);
         
         // check for server closure
         if (info->open == 0)
@@ -65,6 +63,7 @@ void* controller_thread(void* myArgs) {
     pthread_mutex_unlock(info->mutex_controller);
 }
 
+// the main function of the server, creates controller threads and is responsible to manage the client-server connections
 void jobExecutorServer(int argc, char *argv[]) {
 
     // name the arguments
@@ -90,7 +89,7 @@ void jobExecutorServer(int argc, char *argv[]) {
     // Prepare to accept connections
     listen(server_socket, 100);
     
-    // create the detach attribute for the detached thread creation later inside the for loop
+    // create the detach attribute for the detached threads creations later inside the while loop
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
@@ -111,8 +110,7 @@ void jobExecutorServer(int argc, char *argv[]) {
         myArgs->commander_socket = commander_socket;
         pthread_create(&temp_thread, &attr, &controller_thread, (void*)myArgs);
 
-        // if exit, wait for all the threads to join
-        // when the last thread joins, info->open is going to close and we will exit the loop
+        // if exit, break the loop
         if (exit == 1) {
             pthread_attr_destroy(&attr);
             break;
@@ -183,5 +181,6 @@ int main(int argc, char *argv[]) {
     pthread_mutex_destroy(info->mutex_concurrency);
     free(info->mutex_concurrency);
 
+    // wait for all the threads to finish
     pthread_exit(0);
 }

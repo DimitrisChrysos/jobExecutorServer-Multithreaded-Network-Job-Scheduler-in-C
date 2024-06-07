@@ -135,8 +135,6 @@ void print_queue_and_stats(Queue* myqueue) {
     }
     Triplet* first_node = myqueue->first_node->value;
     Triplet* last_node = myqueue->last_node->value;
-    // printf("myqueue: first item job = %s \n", first_node->job);
-    // printf("myqueue: last item job = %s \n", last_node->job);
     printf("myqueue: size = %d\n", myqueue->size);
 
     Node* temp_node = myqueue->first_node;

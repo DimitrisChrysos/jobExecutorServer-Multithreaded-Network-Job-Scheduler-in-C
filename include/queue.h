@@ -1,5 +1,5 @@
+// struct for the queue nodes 
 typedef struct node Node;
-
 typedef struct node {
     void* value;
     int index;
@@ -7,8 +7,8 @@ typedef struct node {
     Node* child;
 } Node;
 
+// struct for the queues
 typedef struct queue Queue;
-
 typedef struct queue {
     Node* first_node;
     Node* last_node;
@@ -42,7 +42,7 @@ int queue_empty(Queue myqueue);
 // returns the size of the queue
 int queue_size(Queue myqueue);
 
-
+// struct for the job triplets
 typedef struct triplet Triplet;
 typedef struct triplet {
     char* jobID;
@@ -50,7 +50,7 @@ typedef struct triplet {
     int commander_socket;
 } Triplet;
 
-// initalizes a Triplet
+// initalizes a Triplet and returns it
 Triplet* init_triplet(char* jobID, char* job, int commander_socket);
 
 // deletes a Triplet

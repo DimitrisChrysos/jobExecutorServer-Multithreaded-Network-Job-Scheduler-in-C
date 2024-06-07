@@ -13,7 +13,7 @@
 #include "../include/queue.h"
 #include <semaphore.h>
 
-// creates a big string, to sent the job to the Server < Needs free()! >
+// creates a big string, to sent the job to the Server (Needs memory deallocation!)
 char* create_job(int argc, char *argv[]) {
 
     int start_index = 3;
@@ -41,6 +41,7 @@ char* create_job(int argc, char *argv[]) {
     return return_string;
 }
 
+// the main function that controlls jobCommanders actions
 int jobCommander(int argc, char *argv[]) {
     
     // name the arguments
@@ -140,9 +141,6 @@ int jobCommander(int argc, char *argv[]) {
 
     return 0;
 }
-
-
-
 
 void main(int argc, char *argv[]) {
     

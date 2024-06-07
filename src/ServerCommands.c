@@ -43,7 +43,6 @@ char* commands(char** tokenized, char* unix_command, int commander_socket) {
         
         pthread_mutex_lock(info->mutex_concurrency);
         char* message = poll(tokenized);
-        // printf("POLL: conc = %d | activ_proc = %d\n", info->concurrency, info->active_processes);
         pthread_mutex_unlock(info->mutex_concurrency);
         
         return message; 
@@ -99,8 +98,6 @@ char* stop_job(char** tokenized) {
         }
         temp_node = temp_node->child;
     }
-
-
 
     // if it's waiting, remove it from myqueue
     // at the end, found or not, return the appropriate message
@@ -230,7 +227,6 @@ void execute_job() {
     pthread_mutex_lock(info->mutex_concurrency);
     if (info->active_processes < info->concurrency && info->myqueue->size != 0) {
         info->active_processes++;
-        // printf("WORKER: conc = %d | activ_proc = %d\n", info->concurrency, info->active_processes);
         pthread_mutex_unlock(info->mutex_concurrency);
 
         // remove the front process "job" from the queue and execute it
@@ -303,9 +299,6 @@ void execute_job() {
             info->active_processes--;
             pthread_mutex_unlock(info->mutex_concurrency);
 
-            // // send signal to worker threads, that a job is finished
-            // pthread_cond_broadcast(info->cond_worker);
-
             // open the file created from the child, find its size and read it
             char file_name[100];
             sprintf(file_name, "build/%d.output", child_pid);
@@ -330,8 +323,6 @@ void execute_job() {
             if (send(client_socket, new_buffer, sizeof(char)*(strlen(new_buffer) + 1), 0) == -1) {
                 printf("failed to send %s output to client %d...\n", removed_triplet->jobID, client_socket);
             }
-
-            // printf("## len = %d || client socket = %d\njob = %s || new_buffer = %s\n", len, client_socket, removed_triplet->job, new_buffer);
 
             // free memory, close client socket and remove the file created by the child
             free(buffer);
@@ -364,7 +355,6 @@ void call_commands(void* myArgs) {
     read(commander_socket, &total_len, sizeof(int));    // read total_len
     char *commander_message = (char*)calloc(total_len, sizeof(char));
     read(commander_socket, commander_message, total_len*sizeof(char));  // read the job
-    // printf("SERVER: %s\n\n", commander_message);
 
     // save the commander_message as full_job
     char* full_job = (char*)calloc(total_len, sizeof(char));
