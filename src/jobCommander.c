@@ -13,8 +13,6 @@
 #include "../include/queue.h"
 #include <semaphore.h>
 
-#define SERVER_HOSTNAME "localhost"     // TODO: delete this from the dit machines
-
 // creates a big string, to sent the job to the Server < Needs free()! >
 char* create_job(int argc, char *argv[]) {
 
@@ -48,12 +46,7 @@ int jobCommander(int argc, char *argv[]) {
     // name the arguments
     char* port = argv[2];   // the port of the Server
     char* job = create_job(argc, argv);    // the job to be sent, to the Server
-
-    // TODO: Uncomment the following line when using the linux systems of DIT!
-    // char* server_name = argv[1];    // the name of the machine
-
-    // TODO: Comment/Delete this line when not using the ip of this machine
-    char* server_name = SERVER_HOSTNAME;
+    char* server_name = argv[1];    // the name of the machine
 
     // set the hint address
     struct addrinfo hint;
