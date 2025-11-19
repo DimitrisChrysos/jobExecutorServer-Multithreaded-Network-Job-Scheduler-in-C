@@ -90,5 +90,5 @@ All shared resources (buffer, concurrency) are protected by mutexes and conditio
 
 ---
 
-Course: **Κ24 — Προγραμματισμός Συστήματος**  
+Course: **Systems Programming (Κ24 — Προγραμματισμός Συστήματος)**  
 Assignment: **Εργασία 2 — Εαρινό Εξάμηνο 2024**
